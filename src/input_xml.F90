@@ -3913,7 +3913,7 @@ contains
             if (t % find_filter(FILTER_ENERGYOUT) > 0 .and. run_CE) then
               ! Set tally estimator to analog
               t % estimator = ESTIMATOR_ANALOG
-            end if
+      end if
           case ('decay-rate')
             t % score_bins(j) = SCORE_DECAY_RATE
           case ('delayed-nu-fission')
@@ -3937,6 +3937,7 @@ contains
           case ('fission-q-recoverable')
             t % score_bins(j) = SCORE_FISS_Q_RECOV
           case ('current')
+
 
             ! Check which type of current is desired: mesh currents or
             ! surface currents
@@ -4004,12 +4005,12 @@ contains
               allocate(MeshFilter :: filters(i_filt) % obj)
               select type(filt => filters(i_filt) % obj)
               type is (MeshFilter)
-                filt % id = i_filt
+                filt % id = 19 !i_filt
                 filt % mesh = i_mesh
 
                 ! We need to increase the dimension by one since we also need
                 ! currents coming into and out of the boundary mesh cells.
-                filt % n_bins = product(m % dimension + 1)
+                filt % n_bins = product(m % dimension) ! + 1)
 
               ! Add filter to dictionary
               call filter_dict % add_key(filt % id, i_filt)
