@@ -37,6 +37,7 @@ full_pin_cell_mesh.type = 'regular'
 full_pin_cell_mesh.dimension = [10,10,30]
 full_pin_cell_mesh.lower_left = [-0.62992,-0.62992,-182.88]
 full_pin_cell_mesh.upper_right =[0.62992,0.62992,182.88]
+full_pin_cell_mesh.width=[0.62992*2,0.62992*2,182.88*2]
 
 materials_file = openmc.Materials(geometry.get_all_materials().values())
 name = 'Moderator'

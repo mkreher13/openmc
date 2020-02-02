@@ -36,7 +36,9 @@ MGXS_TYPES = ['total',
               'chi-prompt',
               'inverse-velocity',
               'prompt-nu-fission',
-              'prompt-nu-fission matrix']
+              'prompt-nu-fission matrix',
+              'current',
+              'diffusion-coefficient']
 
 # Supported domain types
 DOMAIN_TYPES = ['cell',
@@ -47,7 +49,7 @@ DOMAIN_TYPES = ['cell',
 
 # Filter types corresponding to each domain
 _DOMAIN_TO_FILTER = {'cell': openmc.CellFilter,
-                     'distribcell': openmc.DistribcellFilter,
+        'distribcell': openmc.DistribcellFilter,
                      'universe': openmc.UniverseFilter,
                      'material': openmc.MaterialFilter,
                      'mesh': openmc.MeshFilter}
@@ -751,6 +753,10 @@ class MGXS(metaclass=ABCMeta):
         elif mgxs_type == 'prompt-nu-fission matrix':
             mgxs = NuFissionMatrixXS(domain, domain_type, energy_groups,
                                      prompt=True)
+        elif mgxs_type == 'current':
+            mgxs = Current(domain, domain_type, energy_groups)
+        elif mgxs_type == 'diffusion-coefficient':
+            mgxs = DiffusionCoefficient(domain, domain_type, energy_groups)
 
         mgxs.by_nuclide = by_nuclide
         mgxs.name = name
@@ -2802,6 +2808,256 @@ class TransportXS(MGXS):
             self._rxn_type = 'transport'
         else:
             self._rxn_type = 'nu-transport'
+
+
+class DiffusionCoefficient(TransportXS):
+    r"""A transport-corrected total multi-group cross section.
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group cross sections for multi-group neutronics calculations. At a
+    minimum, one needs to set the :attr:`TransportXS.energy_groups` and
+    :attr:`TransportXS.domain` properties. Tallies for the flux and appropriate
+    reaction rates over the specified domain are generated automatically via the
+    :attr:`TransportXS.tallies` property, which can then be appended to a
+    :class:`openmc.Tallies` instance.
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    necessary data to compute multi-group cross sections from a
+    :class:`openmc.StatePoint` instance. The derived multi-group cross section
+    can then be obtained from the :attr:`TransportXS.xs_tally` property.
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
+    transport-corrected total cross section is calculated as:
+    .. math::
+       \langle \sigma_t \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
+       d\Omega \int_{E_g}^{E_{g-1}} dE \sigma_t (r, E) \psi
+       (r, E, \Omega) \\
+       \langle \sigma_{s1} \phi \rangle &= \int_{r \in V} dr
+       \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \int_{4\pi}
+       d\Omega' \int_0^\infty dE' \int_{-1}^1 d\mu \; \mu \sigma_s
+       (r, E' \rightarrow E, \Omega' \cdot \Omega)
+       \phi (r, E', \Omega) \\
+       \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
+       \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
+       \sigma_{tr} &= \frac{\langle \sigma_t \phi \rangle - \langle \sigma_{s1}
+       \phi \rangle}{\langle \phi \rangle}
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        The domain type for spatial homogenization
+    groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    nu : bool
+        If True, the cross section data will include neutron multiplication
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe or Mesh
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : 'analog'
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section. The keys
+        are strings listed in the :attr:`TransportXS.tally_keys` property and
+        values are instances of :class:`openmc.Tally`.
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+    """
+
+    def __init__(self, domain=None, domain_type=None, groups=None, nu=False,
+                 by_nuclide=False, name='', num_polar=1, num_azimuthal=1):
+        super(DiffusionCoefficient, self).__init__(domain, domain_type, groups,
+                                                   nu, by_nuclide, name,
+                                                   num_polar, num_azimuthal)
+        self._rxn_type = 'diffusion-coefficient'
+        cv.check_value('nu for diffusion-coefficient', nu, [False])
+
+    @property
+    def rxn_rate_tally(self):
+        if self._rxn_rate_tally is None:
+            old_filt = self.tallies['scatter-1'].filters[-1]
+            new_filt = openmc.EnergyFilter(old_filt.bins)
+            new_filt.stride = old_filt.stride
+            self.tallies['scatter-1'].filters[-1] = new_filt
+
+            # Compute total cross section
+            total_xs = self.tallies['total'] / self.tallies['flux (tracklength)']
+
+            # Compute transport correction term
+            trans_corr = self.tallies['scatter-1'] / self.tallies['flux (analog)']
+
+            # Compute the diffusion coefficient
+            transport = total_xs - trans_corr
+            dif_coef = transport**(-1) / 3.0
+
+            self._rxn_rate_tally = dif_coef * self.tallies['flux (tracklength)']
+            self._rxn_rate_tally.sparse = self.sparse
+
+        return self._rxn_rate_tally
+
+    @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
+            self._xs_tally = self.rxn_rate_tally / self.tallies['flux (tracklength)']
+            self._compute_xs()
+
+        return self._xs_tally
+
+    def get_condensed_xs(self, coarse_groups, condense_dif_coef=True):
+        """Construct an energy-condensed version of this cross section.
+        Parameters
+        ----------
+        coarse_groups : openmc.mgxs.EnergyGroups
+            The coarse energy group structure of interest
+        Returns
+        -------
+        MGXS
+            A new MGXS condensed to the group structure of interest
+        """
+
+        cv.check_type('coarse_groups', coarse_groups, EnergyGroups)
+        cv.check_less_than('coarse groups', coarse_groups.num_groups,
+                           self.num_groups, equality=True)
+        cv.check_value('upper coarse energy', coarse_groups.group_edges[-1],
+                       [self.energy_groups.group_edges[-1]])
+        cv.check_value('lower coarse energy', coarse_groups.group_edges[0],
+                       [self.energy_groups.group_edges[0]])
+
+        # Clone this MGXS to initialize the condensed version
+        condensed_xs = copy.deepcopy(self)
+
+        if condense_dif_coef:
+            if self._rxn_rate_tally is None:
+                old_filt = self.tallies['scatter-1'].filters[-1]
+                new_filt = openmc.EnergyFilter(old_filt.bins)
+                new_filt.stride = old_filt.stride
+                self.tallies['scatter-1'].filters[-1] = new_filt
+
+            total = self.tallies['total'] / self.tallies['flux (tracklength)']
+            trans_corr = self.tallies['scatter-1'] / self.tallies['flux (analog)']
+            transport = (total - trans_corr)
+            dif_coef = transport**(-1) / 3.0
+            dif_coef *= self.tallies['flux (tracklength)']
+            flux_tally = condensed_xs.tallies['flux (tracklength)']
+            condensed_xs._tallies = OrderedDict()
+            condensed_xs._tallies[self._rxn_type] = dif_coef
+            condensed_xs._tallies['flux (tracklength)'] = flux_tally
+            condensed_xs._rxn_rate_tally = dif_coef
+            condensed_xs._xs_tally = None
+            condensed_xs._sparse = False
+            condensed_xs._energy_groups = coarse_groups
+
+        else:
+            condensed_xs._rxn_rate_tally = None
+            condensed_xs._xs_tally = None
+            condensed_xs._sparse = False
+            condensed_xs._energy_groups = coarse_groups
+
+        # Build energy indices to sum across
+        energy_indices = []
+        for group in range(coarse_groups.num_groups, 0, -1):
+            low, high = coarse_groups.get_group_bounds(group)
+            low_index = np.where(self.energy_groups.group_edges == low)[0][0]
+            energy_indices.append(low_index)
+
+        fine_edges = self.energy_groups.group_edges
+
+        # Condense each of the tallies to the coarse group structure
+        for tally in condensed_xs.tallies.values():
+
+            # Make condensed tally derived and null out sum, sum_sq
+            tally._derived = True
+            tally._sum = None
+            tally._sum_sq = None
+
+            # Get tally data arrays reshaped with one dimension per filter
+            mean = tally.get_reshaped_data(value='mean')
+            std_dev = tally.get_reshaped_data(value='std_dev')
+
+            # Sum across all applicable fine energy group filters
+            for i, tally_filter in enumerate(tally.filters):
+                if not isinstance(tally_filter,
+                                  (openmc.EnergyFilter,
+                                   openmc.EnergyoutFilter)):
+                    continue
+                elif len(tally_filter.bins) != len(fine_edges):
+                    continue
+                elif not np.allclose(tally_filter.bins, fine_edges):
+                    continue
+                else:
+                    tally_filter.bins = coarse_groups.group_edges
+                    mean = np.add.reduceat(mean, energy_indices, axis=i)
+                    std_dev = np.add.reduceat(std_dev**2, energy_indices,
+                                              axis=i)
+                    std_dev = np.sqrt(std_dev)
+
+            # Reshape condensed data arrays with one dimension for all filters
+            mean = np.reshape(mean, tally.shape)
+            std_dev = np.reshape(std_dev, tally.shape)
+
+            # Override tally's data with the new condensed data
+            tally._mean = mean
+            tally._std_dev = std_dev
+
+        # Compute the energy condensed multi-group cross section
+        condensed_xs.sparse = self.sparse
+        return condensed_xs
 
 
 class AbsorptionXS(MGXS):
@@ -5907,3 +6163,446 @@ class InverseVelocity(MGXS):
         else:
             raise ValueError('Unable to return the units of InverseVelocity'
                              ' for xs_type other than "macro"')
+
+
+class SurfaceMGXS(MGXS,metaclass=ABCMeta):
+    """An abstract multi-group cross section for some energy group structure
+    on the surfaces of a mesh domain.
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute surface- and energy-integrated multi-group cross
+    section for multi-group neutronics calculations.
+    NOTE: Users should instantiate the subclasses of this abstract class.
+    Parameters
+    ----------
+    domain : openmc.Mesh
+        The domain for spatial homogenization
+    domain_type : {'mesh'}
+        The domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Mesh
+        Domain for spatial homogenization
+    domain_type : {'mesh'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is equal to the number of mesh surfaces times
+        two to account for both the incoming and outgoing current from the
+        mesh cell surfaces.
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+    """
+
+    def __init__(self, domain=None, domain_type=None, energy_groups=None,
+                 by_nuclide=False, name=''):
+        super(SurfaceMGXS, self).__init__(domain, domain_type, energy_groups,
+                                          by_nuclide, name)
+
+    @property
+    def scores(self):
+        return [self.rxn_type]
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @property
+    def domain_type(self):
+        return self._domain_type
+
+    @domain.setter
+    def domain(self, domain):
+        cv.check_type('domain', domain, openmc.Mesh)
+        self._domain = domain
+
+        # Assign a domain type
+        if self.domain_type is None:
+            self._domain_type = 'mesh'
+
+    @domain_type.setter
+    def domain_type(self, domain_type):
+        cv.check_value('domain type', domain_type, 'mesh')
+        self._domain_type = domain_type
+
+    @property
+    def xs_tally(self):
+        if self._xs_tally is None:
+            if self.tallies is None:
+                msg = 'Unable to get xs_tally since tallies have ' \
+                      'not been loaded from a statepoint'
+                raise ValueError(msg)
+
+            self._xs_tally = self.rxn_rate_tally
+            self._compute_xs()
+
+        return self._xs_tally
+
+    def load_from_statepoint(self, statepoint):
+        """Extracts tallies in an OpenMC StatePoint with the data needed to
+        compute multi-group cross sections.
+        This method is needed to compute cross section data from tallies
+        in an OpenMC StatePoint object.
+        NOTE: The statepoint must first be linked with an OpenMC Summary object.
+        Parameters
+        ----------
+        statepoint : openmc.StatePoint
+            An OpenMC StatePoint object with tally data
+        Raises
+        ------
+        ValueError
+            When this method is called with a statepoint that has not been
+            linked with a summary object.
+        """
+
+        cv.check_type('statepoint', statepoint, openmc.statepoint.StatePoint)
+
+        if statepoint.summary is None:
+            msg = 'Unable to load data from a statepoint which has not been ' \
+                  'linked with a summary file'
+            raise ValueError(msg)
+
+        # Override the domain object that loaded from an OpenMC summary file
+        # NOTE: This is necessary for micro cross-sections which require
+        # the isotopic number densities as computed by OpenMC
+        geom = statepoint.summary.geometry
+        if self.domain_type in ('cell', 'distribcell'):
+            self.domain = geom.get_all_cells()[self.domain.id]
+        elif self.domain_type == 'universe':
+            self.domain = geom.get_all_universes()[self.domain.id]
+        elif self.domain_type == 'material':
+            self.domain = geom.get_all_materials()[self.domain.id]
+        elif self.domain_type == 'mesh':
+            self.domain = statepoint.meshes[self.domain.id]
+        else:
+            msg = 'Unable to load data from a statepoint for domain type {0} ' \
+                  'which is not yet supported'.format(self.domain_type)
+            raise ValueError(msg)
+
+        # Use tally "slicing" to ensure that tallies correspond to our domain
+        # NOTE: This is important if tally merging was used
+        if self.domain_type == 'mesh':
+            filters = [_DOMAIN_TO_FILTER[self.domain_type]]
+            xyz = [range(1, x+1) for x in self.domain.dimension]
+            filter_bins = [tuple(itertools.product(*xyz))]
+        elif self.domain_type != 'distribcell':
+            filters = [_DOMAIN_TO_FILTER[self.domain_type]]
+            filter_bins = [(self.domain.id,)]
+        # Distribcell filters only accept single cell - neglect it when slicing
+        else:
+            filters = []
+            filter_bins = []
+
+        # Clear any tallies previously loaded from a statepoint
+        if self.loaded_sp:
+            self._tallies = None
+            self._xs_tally = None
+            self._rxn_rate_tally = None
+            self._loaded_sp = False
+
+        # Make a list of the surface bins
+        surface_bins = list(range(1, 4 * self.domain.num_dimensions + 1))
+
+        # Find, slice and store Tallies from StatePoint
+        # The tally slicing is needed if tally merging was used
+        for tally_type, tally in self.tallies.items():
+            surface_filter = openmc.SurfaceFilter(surface_bins)
+            tally.filters.append(surface_filter)
+            sp_tally = statepoint.get_tally(
+                tally.scores, tally.filters, tally.nuclides,
+                estimator=tally.estimator, exact_filters=True)
+            sp_tally = sp_tally.get_slice(
+                tally.scores, filters, filter_bins, tally.nuclides)
+            sp_tally.sparse = self.sparse
+            self.tallies[tally_type] = sp_tally
+
+        self._loaded_sp = True
+
+    def get_xs(self, groups='all', subdomains='all', nuclides='all',
+               xs_type='macro', order_groups='increasing',
+               value='mean', squeeze=True, **kwargs):
+        r"""Returns an array of multi-group cross sections.
+        This method constructs a 3D NumPy array for the requested
+        multi-group cross section data for one or more subdomains
+        (1st dimension), energy groups (2nd dimension), and nuclides
+        (3rd dimension).
+        Parameters
+        ----------
+        groups : Iterable of Integral or 'all'
+            Energy groups of interest. Defaults to 'all'.
+        subdomains : Iterable of Integral or 'all'
+            Subdomain IDs of interest. Defaults to 'all'.
+        nuclides : Iterable of str or 'all' or 'sum'
+            A list of nuclide name strings (e.g., ['U235', 'U238']). The
+            special string 'all' will return the cross sections for all nuclides
+            in the spatial domain. The special string 'sum' will return the
+            cross section summed over all nuclides. Defaults to 'all'.
+        xs_type: {'macro', 'micro'}
+            Return the macro or micro cross section in units of cm^-1 or barns.
+            Defaults to 'macro'.
+        order_groups: {'increasing', 'decreasing'}
+            Return the cross section indexed according to increasing or
+            decreasing energy groups (decreasing or increasing energies).
+            Defaults to 'increasing'.
+        value : {'mean', 'std_dev', 'rel_err'}
+            A string for the type of value to return. Defaults to 'mean'.
+        squeeze : bool
+            A boolean representing whether to eliminate the extra dimensions
+            of the multi-dimensional array to be returned. Defaults to True.
+        Returns
+        -------
+        numpy.ndarray
+            A NumPy array of the multi-group cross section indexed in the order
+            each group, subdomain and nuclide is listed in the parameters.
+        Raises
+        ------
+        ValueError
+            When this method is called before the multi-group cross section is
+            computed from tally data.
+        """
+
+        cv.check_value('value', value, ['mean', 'std_dev', 'rel_err'])
+        cv.check_value('xs_type', xs_type, ['macro', 'micro'])
+
+        # FIXME: Unable to get microscopic xs for mesh domain because the mesh
+        # cells do not know the nuclide densities in each mesh cell.
+        if self.domain_type == 'mesh' and xs_type == 'micro':
+            msg = 'Unable to get micro xs for mesh domain since the mesh ' \
+                  'cells do not know the nuclide densities in each mesh cell.'
+            raise ValueError(msg)
+
+        filters = []
+        filter_bins = []
+
+        # Construct a collection of the domain filter bins
+        if not isinstance(subdomains, string_types):
+            cv.check_iterable_type('subdomains', subdomains, Integral,
+                                   max_depth=3)
+
+            filters.append(_DOMAIN_TO_FILTER[self.domain_type])
+            subdomain_bins = []
+            for subdomain in subdomains:
+                subdomain_bins.append(subdomain)
+            filter_bins.append(tuple(subdomain_bins))
+
+        # Construct list of energy group bounds tuples for all requested groups
+        if not isinstance(groups, string_types):
+            cv.check_iterable_type('groups', groups, Integral)
+            filters.append(openmc.EnergyFilter)
+            energy_bins = []
+            for group in groups:
+                energy_bins.append(
+                    (self.energy_groups.get_group_bounds(group),))
+            filter_bins.append(tuple(energy_bins))
+
+        # Construct a collection of the nuclides to retrieve from the xs tally
+        if self.by_nuclide:
+            if nuclides == 'all' or nuclides == 'sum' or nuclides == ['sum']:
+                query_nuclides = self.get_nuclides()
+            else:
+                query_nuclides = nuclides
+        else:
+            query_nuclides = ['total']
+
+        # If user requested the sum for all nuclides, use tally summation
+        if nuclides == 'sum' or nuclides == ['sum']:
+            xs_tally = self.xs_tally.summation(nuclides=query_nuclides)
+            xs = xs_tally.get_values(filters=filters,
+                                     filter_bins=filter_bins, value=value)
+        else:
+            xs = self.xs_tally.get_values(filters=filters,
+                                          filter_bins=filter_bins,
+                                          nuclides=query_nuclides, value=value)
+
+        # Divide by atom number densities for microscopic cross sections
+        if xs_type == 'micro':
+            if self.by_nuclide:
+                densities = self.get_nuclide_densities(nuclides)
+            else:
+                densities = self.get_nuclide_densities('sum')
+            if value == 'mean' or value == 'std_dev':
+                xs /= densities[np.newaxis, :, np.newaxis]
+
+        # Eliminate the trivial score dimension
+        xs = np.squeeze(xs, axis=len(xs.shape) - 1)
+        xs = np.nan_to_num(xs)
+
+        if groups == 'all':
+            num_groups = self.num_groups
+        else:
+            num_groups = len(groups)
+
+        # Reshape tally data array with separate axes for domain and energy
+        # Accomodate the polar and azimuthal bins if needed
+        num_surfaces = 4 * self.domain.num_dimensions
+        num_subdomains = int(xs.shape[0] / (num_groups * self.num_polar *
+                                            self.num_azimuthal * num_surfaces))
+        if self.num_polar > 1 or self.num_azimuthal > 1:
+            new_shape = (self.num_polar, self.num_azimuthal, num_subdomains,
+                         num_groups, num_surfaces)
+        else:
+            new_shape = (num_subdomains, num_groups, num_surfaces)
+        new_shape += xs.shape[1:]
+        xs = np.reshape(xs, new_shape)
+
+        # Reverse data if user requested increasing energy groups since
+        # tally data is stored in order of increasing energies
+        if order_groups == 'increasing':
+            xs = xs[..., ::-1, :, :]
+
+        if squeeze:
+            # We want to squeeze out everything but the polar, azimuthal,
+            # and energy group data.
+            xs = self._squeeze_xs(xs)
+
+        return xs
+
+
+class Current(SurfaceMGXS):
+    r"""A current multi-group cross section.
+    This class can be used for both OpenMC input generation and tally data
+    post-processing to compute spatially-homogenized and energy-integrated
+    multi-group total cross sections for multi-group neutronics calculations. At
+    a minimum, one needs to set the :attr:`TotalXS.energy_groups` and
+    :attr:`TotalXS.domain` properties. Tallies for the flux and appropriate
+    reaction rates over the specified domain are generated automatically via the
+    :attr:`TotalXS.tallies` property, which can then be appended to a
+    :class:`openmc.Tallies` instance.
+    For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
+    necessary data to compute multi-group cross sections from a
+    :class:`openmc.StatePoint` instance. The derived multi-group cross section
+    can then be obtained from the :attr:`TotalXS.xs_tally` property.
+    For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
+    total cross section is calculated as:
+    .. math::
+       \frac{\int_{r \in V} dr \int_{4\pi} d\Omega \int_{E_g}^{E_{g-1}} dE \;
+       \sigma_t (r, E) \psi (r, E, \Omega)}{\int_{r \in V} dr \int_{4\pi}
+       d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
+    Parameters
+    ----------
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+        The domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        The domain type for spatial homogenization
+    groups : openmc.mgxs.EnergyGroups
+        The energy group structure for energy condensation
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    name : str, optional
+        Name of the multi-group cross section. Used as a label to identify
+        tallies in OpenMC 'tallies.xml' file.
+    Attributes
+    ----------
+    name : str, optional
+        Name of the multi-group cross section
+    rxn_type : str
+        Reaction type (e.g., 'total', 'nu-fission', etc.)
+    by_nuclide : bool
+        If true, computes cross sections for each nuclide in domain
+    domain : Material or Cell or Universe or Mesh
+        Domain for spatial homogenization
+    domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
+        Domain type for spatial homogenization
+    energy_groups : openmc.mgxs.EnergyGroups
+        Energy group structure for energy condensation
+    tally_trigger : openmc.Trigger
+        An (optional) tally precision trigger given to each tally used to
+        compute the cross section
+    scores : list of str
+        The scores in each tally used to compute the multi-group cross section
+    filters : list of openmc.Filter
+        The filters in each tally used to compute the multi-group cross section
+    tally_keys : list of str
+        The keys into the tallies dictionary for each tally used to compute
+        the multi-group cross section
+    estimator : {'tracklength', 'analog'}
+        The tally estimator used to compute the multi-group cross section
+    tallies : collections.OrderedDict
+        OpenMC tallies needed to compute the multi-group cross section. The keys
+        are strings listed in the :attr:`TotalXS.tally_keys` property and values
+        are instances of :class:`openmc.Tally`.
+    rxn_rate_tally : openmc.Tally
+        Derived tally for the reaction rate tally used in the numerator to
+        compute the multi-group cross section. This attribute is None
+        unless the multi-group cross section has been computed.
+    xs_tally : openmc.Tally
+        Derived tally for the multi-group cross section. This attribute
+        is None unless the multi-group cross section has been computed.
+    num_subdomains : int
+        The number of subdomains is unity for 'material', 'cell' and 'universe'
+        domain types. This is equal to the number of cell instances
+        for 'distribcell' domain types (it is equal to unity prior to loading
+        tally data from a statepoint file).
+    num_nuclides : int
+        The number of nuclides for which the multi-group cross section is
+        being tracked. This is unity if the by_nuclide attribute is False.
+    nuclides : Iterable of str or 'sum'
+        The optional user-specified nuclides for which to compute cross
+        sections (e.g., 'U238', 'O16'). If by_nuclide is True but nuclides
+        are not specified by the user, all nuclides in the spatial domain
+        are included. This attribute is 'sum' if by_nuclide is false.
+    sparse : bool
+        Whether or not the MGXS' tallies use SciPy's LIL sparse matrix format
+        for compressed data storage
+    loaded_sp : bool
+        Whether or not a statepoint file has been loaded with tally data
+    derived : bool
+        Whether or not the MGXS is merged from one or more other MGXS
+    hdf5_key : str
+        The key used to index multi-group cross sections in an HDF5 data store
+    """
+
+    def __init__(self, domain=None, domain_type=None,
+                 groups=None, by_nuclide=False, name=''):
+        super(Current, self).__init__(domain, domain_type,
+                                      groups, by_nuclide, name)
+        self._rxn_type = 'current'
