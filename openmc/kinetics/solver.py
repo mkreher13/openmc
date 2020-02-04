@@ -88,8 +88,9 @@ class Solver(object):
     k_crit : float
         The initial eigenvalue.
 
-    mpi_procs : int
-        The number of MPI processes to use.
+    mpi_args : list of str, optional
+        MPI execute command and any additional MPI arguments to pass,
+        e.g. ['mpiexec', '-n', '8'].
 
     threads : int
         The number of OpenMP threads to use.
@@ -154,7 +155,7 @@ class Solver(object):
         self._fine_groups = None
         self._initial_power = 1.
         self._k_crit = 1.0
-        self._mpi_procs = 1
+        self._mpi_args = None
         self._threads = 1
         self._chi_delayed_by_delayed_group = False
         self._chi_delayed_by_mesh = False
@@ -241,8 +242,8 @@ class Solver(object):
         return self._k_crit
 
     @property
-    def mpi_procs(self):
-        return self._mpi_procs
+    def mpi_args(self):
+        return self._mpi_args
 
     @property
     def threads(self):
@@ -398,9 +399,9 @@ class Solver(object):
     def k_crit(self, k_crit):
         self._k_crit = k_crit
 
-    @mpi_procs.setter
-    def mpi_procs(self, mpi_procs):
-        self._mpi_procs = mpi_procs
+    @mpi_args.setter
+    def mpi_args(self, mpi_args):
+        self._mpi_args = mpi_args
 
     @threads.setter
     def threads(self, threads):
@@ -601,8 +602,8 @@ class Solver(object):
                         print('job {} done'.format(job_number))
                         break
             else:
-                openmc.run(threads=self.threads, mpi_procs=self.mpi_procs,
-                           mpi_exec='mpirun', cwd=self.directory)
+                openmc.run(threads=self.threads, mpi_args=self.mpi_args,
+                           cwd=self.directory)
 
             # Rename the statepoint and summary files
             copyfile(sp_old_name, sp_new_name)
