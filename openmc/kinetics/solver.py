@@ -332,7 +332,7 @@ class Solver(object):
     def amplitude_mesh(self, mesh):
         self._amplitude_mesh = mesh
 
-        unity_mesh = openmc.Mesh()
+        unity_mesh = openmc.RegularMesh()
         unity_mesh.type = mesh.type
         unity_mesh.dimension = [1,1,1]
         unity_mesh.lower_left  = mesh.lower_left

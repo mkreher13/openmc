@@ -2841,7 +2841,7 @@ class DiffusionCoefficient(TransportXS):
        \phi \rangle}{\langle \phi \rangle}
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
@@ -6174,7 +6174,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
     NOTE: Users should instantiate the subclasses of this abstract class.
     Parameters
     ----------
-    domain : openmc.Mesh
+    domain : openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'mesh'}
         The domain type for spatial homogenization
@@ -6262,7 +6262,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
 
     @domain.setter
     def domain(self, domain):
-        cv.check_type('domain', domain, openmc.Mesh)
+        cv.check_type('domain', domain, openmc.RegularMesh)
         self._domain = domain
 
         # Assign a domain type
@@ -6529,7 +6529,7 @@ class Current(SurfaceMGXS):
        d\Omega \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega)}.
     Parameters
     ----------
-    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         The domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         The domain type for spatial homogenization
