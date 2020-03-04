@@ -474,6 +474,7 @@ class MGXS(metaclass=ABCMeta):
 
             # Create a domain Filter object
             filter_type = _DOMAIN_TO_FILTER[self.domain_type]
+        
             if self.domain_type == 'mesh':
                 domain_filter = filter_type(self.domain)
             else:
@@ -502,8 +503,6 @@ class MGXS(metaclass=ABCMeta):
                 # Add non-domain specific Filters (e.g., 'energy') to the Tally
                 for add_filter in filters:
                     self._tallies[key].filters.append(add_filter)
-                if score == 'current':
-                    self._tallies[key].filters.append(openmc.MeshSurfaceFilter(domain_filter.mesh))
 
                 # If this is a by-nuclide cross-section, add nuclides to Tally
                 if self.by_nuclide and score != 'flux':
@@ -6279,9 +6278,15 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
         cv.check_value('domain type', domain_type, 'mesh')
         self._domain_type = domain_type
 
-    #@property
-    #def filters(self):
-    #    filters = []
+    @property
+    def filters(self):
+        group_edges = self.energy_groups.group_edges
+        energy_filter = openmc.EnergyFilter(group_edges)
+        meshsurface = openmc.MeshSurfaceFilter(_DOMAIN_TO_FILTER[self.domain_type](self.domain).mesh)
+        filters = [[energy_filter, meshsurface]]
+
+        return self._add_angle_filters(filters)
+
 
     @property
     def xs_tally(self):
