@@ -502,12 +502,16 @@ class MGXS(metaclass=ABCMeta):
                 # Add non-domain specific Filters (e.g., 'energy') to the Tally
                 for add_filter in filters:
                     self._tallies[key].filters.append(add_filter)
+                if score == 'current':
+                    self._tallies[key].filters.append(openmc.MeshSurfaceFilter(domain_filter.mesh))
 
                 # If this is a by-nuclide cross-section, add nuclides to Tally
                 if self.by_nuclide and score != 'flux':
                     self._tallies[key].nuclides += self.get_nuclides()
                 else:
                     self._tallies[key].nuclides.append('total')
+
+        #print(self._tallies)
 
         return self._tallies
 
@@ -675,7 +679,7 @@ class MGXS(metaclass=ABCMeta):
 
         Parameters
         ----------
-        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix'}
+        mgxs_type : {'total', 'transport', 'nu-transport', 'absorption', 'capture', 'fission', 'nu-fission', 'kappa-fission', 'scatter', 'nu-scatter', 'scatter matrix', 'nu-scatter matrix', 'multiplicity matrix', 'nu-fission matrix', 'chi', 'chi-prompt', 'inverse-velocity', 'prompt-nu-fission', 'prompt-nu-fission matrix', 'current', 'diffusion-coefficient'}
             The type of multi-group cross section object to return
         domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
             The domain for spatial homogenization
@@ -6248,6 +6252,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
         super(SurfaceMGXS, self).__init__(domain, domain_type, energy_groups,
                                           by_nuclide, name)
 
+
     @property
     def scores(self):
         return [self.rxn_type]
@@ -6273,6 +6278,10 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
     def domain_type(self, domain_type):
         cv.check_value('domain type', domain_type, 'mesh')
         self._domain_type = domain_type
+
+    #@property
+    #def filters(self):
+    #    filters = []
 
     @property
     def xs_tally(self):
@@ -6606,3 +6615,5 @@ class Current(SurfaceMGXS):
         super(Current, self).__init__(domain, domain_type,
                                       groups, by_nuclide, name)
         self._rxn_type = 'current'
+
+
