@@ -17,7 +17,7 @@ materials['UO2'].add_element('O'   , 4.62200E-2, 'ao')
 
 materials['Moderator'] = openmc.Material(name='Moderator')
 materials['Moderator'].set_density('g/cm3', 0.7406) #'sum')
-materials['Moderator'].temperature = 566
+#materials['Moderator'].temperature = 566
 materials['Moderator'].add_element('H', 2*3.3500E-2, 'ao')
 materials['Moderator'].add_element('O',   3.3500E-2, 'ao')
 materials['Moderator'].add_element('B',   2.7800E-5, 'ao')

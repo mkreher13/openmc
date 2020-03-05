@@ -34,16 +34,17 @@ elif case == '3.4':
 # Create pin cell mesh
 full_pin_cell_mesh = openmc.RegularMesh()
 full_pin_cell_mesh.type = 'regular'
-full_pin_cell_mesh.dimension = [10,10,30]
+full_pin_cell_mesh.dimension = [5,5,30]
 full_pin_cell_mesh.lower_left = [-0.62992,-0.62992,-182.88]
-full_pin_cell_mesh.upper_right =[0.62992,0.62992,182.88]
+#full_pin_cell_mesh.upper_right =[0.62992,0.62992,182.88]
 full_pin_cell_mesh.width=[0.62992*2,0.62992*2,182.88*2]
 
+#Don't specify a transient: steady-state
 materials_file = openmc.Materials(geometry.get_all_materials().values())
-name = 'Moderator'
-d = materials[name].density
-density = np.array([[0., 1., 2.],[d,omega*d,d]])
-materials[name].set_density('g/cm3',density)
+#name = 'Moderator'
+#d = materials[name].density
+#density = np.array([[0., 1., 2.],[d,omega*d,d]])
+#materials[name].set_density('g/cm3',density)
 
 # OpenMC simulation parameters
 batches = 200
