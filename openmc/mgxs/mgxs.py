@@ -6282,7 +6282,8 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
     def filters(self):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
-        meshsurface = openmc.MeshSurfaceFilter(_DOMAIN_TO_FILTER[self.domain_type](self.domain).mesh)
+        mesh = _DOMAIN_TO_FILTER[self.domain_type](self.domain).mesh
+        meshsurface = openmc.MeshSurfaceFilter(mesh)
         filters = [[energy_filter, meshsurface]]
 
         return self._add_angle_filters(filters)
