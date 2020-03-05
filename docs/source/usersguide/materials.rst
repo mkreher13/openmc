@@ -40,6 +40,12 @@ of an element, you specify the element itself. For example,
 
    mat.add_element('C', 1.0)
 
+This method can also accept case-insensitive element names such as
+
+::
+
+  mat.add_element('aluminium', 1.0)
+   
 Internally, OpenMC stores data on the atomic masses and natural abundances of
 all known isotopes and then uses this data to determine what isotopes should be
 added to the material. When the material is later exported to XML for use by the
@@ -54,6 +60,20 @@ following would add 3.2% enriched uranium to a material::
 
 In addition to U235 and U238, concentrations of U234 and U236 will be present
 and are determined through a correlation based on measured data.
+
+It is also possible to perform enrichment of any element that is composed
+of two naturally-occurring isotopes (e.g., Li or B) in terms of atomic percent.
+To invoke this, provide the additional argument `enrichment_target` to
+:meth:`Material.add_element`. For example the following would enrich B10
+to 30ao%::
+
+   mat.add_element('B', 1.0, enrichment=30.0, enrichment_target='B10')
+
+In order to enrich an isotope in terms of mass percent (wo%), provide the extra
+argument `enrichment_type`. For example the following would enrich Li6 to 15wo%::
+
+   mat.add_element('Li', 1.0, enrichment=15.0, enrichment_target='Li6',
+                   enrichment_type='wo')
 
 Often, cross section libraries don't actually have all naturally-occurring
 isotopes for a given element. For example, in ENDF/B-VII.1, cross section
