@@ -4,7 +4,9 @@ import warnings
 import os
 import copy
 from abc import ABCMeta
+import itertools
 
+from six import string_types
 import numpy as np
 import h5py
 
@@ -6365,13 +6367,13 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
             self._loaded_sp = False
 
         # Make a list of the surface bins
-        surface_bins = list(range(1, 4 * self.domain.num_dimensions + 1))
+        #surface_bins = list(range(1, 4 * self.domain.n_dimension + 1))
 
         # Find, slice and store Tallies from StatePoint
         # The tally slicing is needed if tally merging was used
         for tally_type, tally in self.tallies.items():
-            surface_filter = openmc.SurfaceFilter(surface_bins)
-            tally.filters.append(surface_filter)
+            #surface_filter = openmc.SurfaceFilter(surface_bins)
+            #tally.filters.append(surface_filter)
             sp_tally = statepoint.get_tally(
                 tally.scores, tally.filters, tally.nuclides,
                 estimator=tally.estimator, exact_filters=True)
@@ -6498,7 +6500,7 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
 
         # Reshape tally data array with separate axes for domain and energy
         # Accomodate the polar and azimuthal bins if needed
-        num_surfaces = 4 * self.domain.num_dimensions
+        num_surfaces = 4 * self.domain.n_dimension
         num_subdomains = int(xs.shape[0] / (num_groups * self.num_polar *
                                             self.num_azimuthal * num_surfaces))
         if self.num_polar > 1 or self.num_azimuthal > 1:
