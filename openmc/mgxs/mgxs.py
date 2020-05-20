@@ -494,7 +494,8 @@ class MGXS(metaclass=ABCMeta):
                 self._tallies[key] = openmc.Tally(name=self.name)
                 self._tallies[key].scores = [score]
                 self._tallies[key].estimator = estimator
-                self._tallies[key].filters = [domain_filter]
+                if score != 'current':
+                    self._tallies[key].filters = [domain_filter]
 
                 # If a tally trigger was specified, add it to each tally
                 if self.tally_trigger:
@@ -6285,8 +6286,8 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
         group_edges = self.energy_groups.group_edges
         energy_filter = openmc.EnergyFilter(group_edges)
         mesh = _DOMAIN_TO_FILTER[self.domain_type](self.domain).mesh
-        meshsurface = openmc.MeshSurfaceFilter(mesh)
-        filters = [[energy_filter, meshsurface]]
+        meshsurface_filter = openmc.MeshSurfaceFilter(mesh)
+        filters = [[meshsurface_filter, energy_filter]]
 
         return self._add_angle_filters(filters)
 
@@ -6348,9 +6349,11 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
         # Use tally "slicing" to ensure that tallies correspond to our domain
         # NOTE: This is important if tally merging was used
         if self.domain_type == 'mesh':
-            filters = [_DOMAIN_TO_FILTER[self.domain_type]]
-            xyz = [range(1, x+1) for x in self.domain.dimension]
-            filter_bins = [tuple(itertools.product(*xyz))]
+            filters = [] #no mesh filter needed for current tally
+            filter_bins = []
+            #filters = [_DOMAIN_TO_FILTER[self.domain_type]]
+            #xyz = [range(1, x+1) for x in self.domain.dimension]
+            #filter_bins = [tuple(itertools.product(*xyz))]
         elif self.domain_type != 'distribcell':
             filters = [_DOMAIN_TO_FILTER[self.domain_type]]
             filter_bins = [(self.domain.id,)]
@@ -6509,7 +6512,16 @@ class SurfaceMGXS(MGXS,metaclass=ABCMeta):
         else:
             new_shape = (num_subdomains, num_groups, num_surfaces)
         new_shape += xs.shape[1:]
-        xs = np.reshape(xs, new_shape)
+        # manually reshape xs to be compatible with code that
+        # previously used SurfaceFilter instead of MeshSurfaceFitler
+        new_xs = np.zeros(new_shape)
+        for cell in range(num_subdomains):
+            for g in range(num_groups):
+                for s in range(num_surfaces):
+                    new_xs[cell,g,s] = \
+                            xs[cell*num_surfaces*num_groups+s*num_groups+g]
+        xs = new_xs
+        #np.reshape(xs, new_shape)
 
         # Reverse data if user requested increasing energy groups since
         # tally data is stored in order of increasing energies
