@@ -81,7 +81,7 @@ def surface_integral(array, from_shape, to_shape):
         raise ValueError(msg)
 
     to_array = np.zeros(to_shape)
-    ratios = [a/b for a,b in zip(from_shape,to_shape)]
+    ratios = [int(a/b) for a,b in zip(from_shape,to_shape)]
 
     # Sum x-min currents
     view = array[:,:,0:from_shape[2]:ratios[2],:,0:2]
