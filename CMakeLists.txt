@@ -39,14 +39,7 @@ endif()
 # DAGMC Geometry Support - need DAGMC/MOAB
 #===============================================================================
 if(dagmc)
-  find_package(DAGMC REQUIRED)
-  add_library(dagmc-imported INTERFACE IMPORTED)
-  link_directories(${DAGMC_LIBRARY_DIRS})
-  set_target_properties(dagmc-imported PROPERTIES
-    INTERFACE_LINK_LIBRARIES "${DAGMC_LIBRARIES}"
-    INTERFACE_INCLUDE_DIRECTORIES "${DAGMC_INCLUDE_DIRS}")
-else()
-  set(DAGMC_FOUND false)
+  find_package(DAGMC REQUIRED PATH_SUFFIXES lib/cmake)
 endif()
 
 #===============================================================================
@@ -72,6 +65,13 @@ if(HDF5_IS_PARALLEL)
     message(FATAL_ERROR "Parallel HDF5 must be used with MPI.")
   endif()
   message(STATUS "Using parallel HDF5")
+endif()
+
+# Version 1.12 of HDF5 deprecates the H5Oget_info_by_idx() interface.
+# Thus, we give these flags to allow usage of the old interface in newer
+# versions of HDF5.
+if(NOT (${HDF5_VERSION} VERSION_LESS 1.12.0))
+  list(APPEND cxxflags -DH5Oget_info_by_idx_vers=1 -DH5O_info_t_vers=1)
 endif()
 
 #===============================================================================
@@ -165,7 +165,6 @@ endif()
 add_subdirectory(vendor/xtl)
 set(xtl_DIR ${CMAKE_CURRENT_BINARY_DIR}/vendor/xtl)
 add_subdirectory(vendor/xtensor)
-target_link_libraries(xtensor INTERFACE xtl)
 
 #===============================================================================
 # GSL header-only library
@@ -365,7 +364,7 @@ target_link_libraries(libopenmc ${ldflags} ${HDF5_LIBRARIES} ${HDF5_HL_LIBRARIES
 
 if(dagmc)
   target_compile_definitions(libopenmc PRIVATE DAGMC)
-  target_link_libraries(libopenmc dagmc-imported)
+  target_link_libraries(libopenmc dagmc-shared uwuw-shared)
 endif()
 
 #===============================================================================

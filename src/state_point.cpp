@@ -24,6 +24,7 @@
 #include "openmc/simulation.h"
 #include "openmc/tallies/derivative.h"
 #include "openmc/tallies/filter.h"
+#include "openmc/tallies/filter_mesh.h"
 #include "openmc/tallies/tally.h"
 #include "openmc/timer.h"
 
@@ -163,6 +164,11 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       for (const auto& tally : model::tallies)
         tally_ids.push_back(tally->id_);
       write_attribute(tallies_group, "ids", tally_ids);
+
+#ifdef DAGMC
+      // write unstructured mesh tallies to VTK if possible
+      write_unstructured_mesh_results();
+#endif
 
       // Write all tally information except results
       for (const auto& tally : model::tallies) {
@@ -380,14 +386,14 @@ void load_state_point()
   // Read batch number to restart at
   read_dataset(file_id, "current_batch", simulation::restart_batch);
 
-  // Check for source in statepoint if needed
-  bool source_present;
-  read_attribute(file_id, "source_present", source_present);
-
   if (simulation::restart_batch > settings::n_batches) {
     fatal_error("The number batches specified in settings.xml is fewer "
       " than the number of batches in the given statepoint file.");
   }
+
+  // Logical flag for source present in statepoint file
+  bool source_present;
+  read_attribute(file_id, "source_present", source_present);
 
   // Read information specific to eigenvalue run
   if (settings::run_mode == RunMode::EIGENVALUE) {
@@ -396,6 +402,12 @@ void load_state_point()
 
     // Take maximum of statepoint n_inactive and input n_inactive
     settings::n_inactive = std::max(settings::n_inactive, temp);
+
+    // Check to make sure source bank is present
+    if (settings::path_sourcepoint == settings::path_statepoint &&
+        !source_present) {
+      fatal_error("Source bank must be contained in statepoint restart file");
+    }
   }
 
   // Read number of realizations for global tallies
@@ -403,14 +415,12 @@ void load_state_point()
 
   // Set k_sum, keff, and current_batch based on whether restart file is part
   // of active cycle or inactive cycle
-  restart_set_keff();
-  simulation::current_batch = simulation::restart_batch;
-
-  // Check to make sure source bank is present
-  if (settings::path_sourcepoint == settings::path_statepoint &&
-      !source_present) {
-    fatal_error("Source bank must be contained in statepoint restart file");
+  if (settings::run_mode == RunMode::EIGENVALUE) {
+    restart_set_keff();
   }
+
+  // Set current batch number
+  simulation::current_batch = simulation::restart_batch;
 
   // Read tallies to master. If we are using Parallel HDF5, all processes
   // need to be included in the HDF5 calls.
@@ -672,6 +682,82 @@ void read_source_bank(hid_t group_id)
   H5Dclose(dset);
   H5Tclose(banktype);
 }
+
+#ifdef DAGMC
+void write_unstructured_mesh_results() {
+
+  for (auto& tally : model::tallies) {
+    for (auto filter_idx : tally->filters()) {
+      auto& filter = model::tally_filters[filter_idx];
+      if (filter->type() != "mesh") continue;
+
+      // check if the filter uses an unstructured mesh
+      auto mesh_filter = dynamic_cast<MeshFilter*>(filter.get());
+      auto mesh_idx = mesh_filter->mesh();
+      auto umesh = dynamic_cast<UnstructuredMesh*>(model::meshes[mesh_idx].get());
+
+      if (!umesh) continue;
+
+      // if this tally has more than one filter, print
+      // warning and skip writing the mesh
+      if (tally->filters().size() > 1) {
+        warning(fmt::format("Skipping unstructured mesh writing for tally "
+                            "{}. More than one filter is present on the tally.",
+                            tally->id_));
+        break;
+      }
+
+      int n_realizations = tally->n_realizations_;
+
+      // write each score/nuclide combination for this tally
+      for (int i_score = 0; i_score < tally->scores_.size(); i_score++) {
+        for (int i_nuc = 0; i_nuc < tally->nuclides_.size(); i_nuc++) {
+
+          // index for this nuclide and score
+          int nuc_score_idx = i_score + i_nuc*tally->scores_.size();
+
+          // construct result vectors
+          std::vector<double> mean_vec, std_dev_vec;
+          for (int j = 0; j < tally->results_.shape()[0]; j++) {
+            // mean
+            double mean = tally->results_(j, nuc_score_idx, TallyResult::SUM) / n_realizations;
+            mean_vec.push_back(mean);
+            // std. dev.
+            double sum_sq = tally->results_(j , nuc_score_idx, TallyResult::SUM_SQ);
+            if (n_realizations > 1) {
+              double std_dev = sum_sq/n_realizations - mean*mean;
+              std_dev = std::sqrt(std_dev / (n_realizations - 1));
+              std_dev_vec.push_back(std_dev);
+            } else {
+              std_dev_vec.push_back(0.0);
+            }
+          }
+
+          // generate a name for the value
+          std::string nuclide_name = "total"; // start with total by default
+          if (tally->nuclides_[i_nuc] > -1) {
+            nuclide_name = data::nuclides[tally->nuclides_[i_nuc]]->name_;
+          }
+
+          std::string score_name = tally->score_name(i_score);
+          auto score_str = fmt::format("{}_{}", score_name, nuclide_name);
+          umesh->set_score_data(score_str, mean_vec, std_dev_vec);
+        }
+      }
+
+      // Generate a file name based on the tally id
+      // and the current batch number
+      int w = std::to_string(settings::n_max_batches).size();
+      std::string filename = fmt::format("tally_{0}.{1:0{2}}",
+                                         tally->id_,
+                                         simulation::current_batch,
+                                         w);
+      // Write the unstructured mesh and data to file
+      umesh->write(filename);
+    }
+  }
+}
+#endif
 
 void write_tally_results_nr(hid_t file_id)
 {
