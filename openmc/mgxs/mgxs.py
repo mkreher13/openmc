@@ -2932,6 +2932,7 @@ class DiffusionCoefficient(TransportXS):
     @property
     def rxn_rate_tally(self):
         if self._rxn_rate_tally is None:
+            # Need to restore compatability here too
             old_filt = self.tallies['scatter-1'].filters[-1]
             new_filt = openmc.EnergyFilter(old_filt.bins)
             new_filt.stride = old_filt.stride
@@ -2990,13 +2991,23 @@ class DiffusionCoefficient(TransportXS):
 
         if condense_dif_coef:
             if self._rxn_rate_tally is None:
-                old_filt = self.tallies['scatter-1'].filters[-1]
-                new_filt = openmc.EnergyFilter(old_filt.bins)
-                new_filt.stride = old_filt.stride
-                self.tallies['scatter-1'].filters[-1] = new_filt
+
+                p1_tally = self.tallies['scatter-1']
+                old_filt = p1_tally.filters[-2]
+                new_filt = openmc.EnergyFilter(old_filt.values)
+                p1_tally.filters[-2] = new_filt
+
+                # Slice Legendre expansion filter and change name of score
+                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
+                        filter_bins=[('P1',)],
+                        squeeze=True)
+                p1_tally._scores = ['scatter-1']
+
+            # Could make this piece of code more consistent with similar 
+            # sections in TransportXS() above
 
             total = self.tallies['total'] / self.tallies['flux (tracklength)']
-            trans_corr = self.tallies['scatter-1'] / self.tallies['flux (analog)']
+            trans_corr = p1_tally / self.tallies['flux (analog)']
             transport = (total - trans_corr)
             dif_coef = transport**(-1) / 3.0
             dif_coef *= self.tallies['flux (tracklength)']

@@ -819,14 +819,17 @@ class OuterState(State):
     @property
     def current_tallied(self):
         if not self.mgxs_loaded:
-            current = self.mgxs_lib['current'].get_condensed_xs(self.energy_groups).get_xs()
+            current = self.mgxs_lib['current'].get_condensed_xs(self.energy_groups).get_xs() 
 
             # Condense down the the coarse mesh
             tally_shape = self.tally_zyxg + (12,)
+            
             amp_shape = self.amplitude_zyxg + (12,)
+
             self._current_tallied = openmc.kinetics.surface_integral(current, tally_shape, amp_shape)
 
         self._current_tallied.shape = (self.amplitude_nxyz, self.ng, 12)
+
         return self._current_tallied
 
     @property
