@@ -1030,7 +1030,7 @@ class OuterState(State):
 
         # Get the array of the surface-integrated surface net currents
         partial_current = copy.deepcopy(self.current_tallied)
-        partial_current = partial_current.reshape(np.prod(partial_current.shape) / 12, 12)
+        partial_current = partial_current.reshape(int(np.prod(partial_current.shape) / 12), 12)
         net_current = partial_current[..., 0:12:2] - partial_current[..., 1:12:2]
         net_current[:, 0:6:2] = -net_current[:, 0:6:2]
         net_current.shape = self.amplitude_zyxg + (6,)
