@@ -332,7 +332,7 @@ class Material(IDManagerMixin):
         ----------
         units : {'g/cm3', 'g/cc', 'kg/m3', 'atom/b-cm', 'atom/cm3', 'sum', 'macro'}
             Physical units of density.
-        density : floati or np.ndarray, optional
+        density : float, optional
             Value of the density. Must be specified unless units is given as
             'sum'.
 
@@ -354,11 +354,7 @@ class Material(IDManagerMixin):
                 raise ValueError(msg)
 
             cv.check_type('the density for Material ID="{}"'.format(self.id),
-                          density, (Real, np.ndarray))
-
-            if isinstance(density, np.ndarray):
-                cv.check_value('density interpolation table', len(density.shape), [2])
-
+                          density, Real)
             self._density = density
 
     def add_nuclide(self, nuclide, percent, percent_type='ao'):
