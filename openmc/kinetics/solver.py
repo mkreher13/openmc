@@ -65,6 +65,9 @@ class Solver(object):
     materials_file : openmc.materials.MaterialsFile
         Materials file containing the materials info for each simulation.
 
+    transient : OrderedDict()
+        Ordered dictionary describing the material changes during the transient.
+
     mgxs_lib_file : openmc.materials.MGXSLibrary
         MGXS Library file containing the multi-group xs for mg Monte Carlo.
 
@@ -147,6 +150,7 @@ class Solver(object):
         self._geometry = None
         self._settings_file = None
         self._materials_file = None
+        self._transient = None
         self._mgxs_lib_file = None
         self._clock = None
         self._one_group = None
@@ -208,6 +212,10 @@ class Solver(object):
     @property
     def materials_file(self):
         return self._materials_file
+
+    @property
+    def transient(self):
+        return self._transient
 
     @property
     def mgxs_lib_file(self):
@@ -366,6 +374,10 @@ class Solver(object):
     @materials_file.setter
     def materials_file(self, materials_file):
         self._materials_file = materials_file
+
+    @transient.setter
+    def transient(self, transient):
+        self._transient = transient
 
     @mgxs_lib_file.setter
     def mgxs_lib_file(self, mgxs_lib_file):
@@ -889,6 +901,12 @@ class Solver(object):
 
         # Create the xml files
         self.geometry.time = self.clock.times[time_point]
+        
+        for material in self.materials_file:
+            time = round(self.geometry.time,4)
+            material.set_density = self.transient[material.name][time]['density']
+            material.temperature = self.transient[material.name][time]['temperature']
+        
         self.geometry.export_to_xml(self.directory + '/geometry.xml')
         self.materials_file.export_to_xml(self.directory + '/materials.xml')
         settings_file.export_to_xml(self.directory + '/settings.xml')
