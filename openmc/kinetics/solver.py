@@ -905,7 +905,7 @@ class Solver(object):
         materials_list = []
         for material in self.materials_file:
             time = round(self.geometry.time,4)
-            material.set_density = self.transient[material.name][time]['density']
+            material.set_density('g/cm3',self.transient[material.name][time]['density'])
             material.temperature = self.transient[material.name][time]['temperature']
             materials_list.append(material)
         self.materials_file = openmc.Materials(materials_list)
