@@ -901,11 +901,15 @@ class Solver(object):
 
         # Create the xml files
         self.geometry.time = self.clock.times[time_point]
-        
+
+        materials_list = []
         for material in self.materials_file:
             time = round(self.geometry.time,4)
             material.set_density = self.transient[material.name][time]['density']
             material.temperature = self.transient[material.name][time]['temperature']
+            materials_list.append(material)
+        self.materials_file = openmc.Materials(materials_list)
+
         
         self.geometry.export_to_xml(self.directory + '/geometry.xml')
         self.materials_file.export_to_xml(self.directory + '/materials.xml')
