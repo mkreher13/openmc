@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 
 import openmc.checkvalue as cv
 from . import VolumeCalculation, Source, RegularMesh
+import openmc
 from ._xml import clean_indentation, get_text
 
 
@@ -1299,18 +1300,32 @@ class Settings:
     def _frequency_from_xml_element(self, root):
         elem = root.find('frequency')
         if elem is not None:
-            self.frequency = {}
-            for key in ('lower_left', 'upper_right', 'width',
-                    'group_structure', 'flux_frequency', 'precursor_frequency'):
-                value = get_text(elem, key)
-                if value is not None:
-                    self.frequency[key] = [float(x) for x in value.split()]
+            self.frequency_mesh = RegularMesh()
+            value = get_text(elem, 'lower_left')
+            if value is not None:
+                self.frequency_mesh.lower_left = [float(x) for x in value.split()]
+            value = get_text(elem, 'upper_right')
+            if value is not None:
+                self.frequency_mesh.upper_right = [float(x) for x in value.split()]
+            value = get_text(elem, 'width')
+            if value is not None:
+                self.frequency_mesh.width = [float(x) for x in value.split()]
             value = get_text(elem, 'dimension')
             if value is not None:
-                self.frequency['dimension'] = [int(x) for x in value.split()]
+                self.frequency_mesh.dimension = [int(x) for x in value.split()]
+            value = get_text(elem, 'group_structure')
+            if value is not None:
+                group_edges = [float(x) for x in value.split()]
+                self.frequency_group_structure = openmc.mgxs.EnergyGroups(group_edges)
             value = get_text(elem, 'delayed_groups')
             if value is not None:
-                self.frequency['delayed_groups'] = int(value)
+                self.frequency_num_delayed_groups = int(value)
+            value = get_text(elem, 'flux_frequency')
+            if value is not None:
+                self.flux_frequency = [float(x) for x in value.split()]
+            value = get_text(elem, 'precursor_frequency')
+            if value is not None:
+                self.precursor_frequency = [float(x) for x in value.split()]
 
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')

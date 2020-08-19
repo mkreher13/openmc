@@ -32,6 +32,11 @@ def test_export_to_xml(run_in_tmpdir):
     mesh.upper_right = (10., 10., 10.)
     mesh.dimension = (5, 5, 5)
     s.entropy_mesh = mesh
+    s.frequency_mesh = mesh
+    s.frequency_group_structure = openmc.mgxs.EnergyGroups([0.0, 0.63, 1.0e7])
+    s.frequency_num_delayed_groups = 6
+    s.flux_frequency = [1.0]*125*6
+    s.precursor_frequency = [1.0]*125*6
     s.trigger_active = True
     s.trigger_max_batches = 10000
     s.trigger_batch_interval = 50
@@ -87,6 +92,15 @@ def test_export_to_xml(run_in_tmpdir):
     assert s.entropy_mesh.lower_left == [-10., -10., -10.]
     assert s.entropy_mesh.upper_right == [10., 10., 10.]
     assert s.entropy_mesh.dimension == [5, 5, 5]
+    assert isinstance(s.frequency_mesh, openmc.RegularMesh)
+    assert s.frequency_mesh.lower_left == [-10., -10., -10.]
+    assert s.frequency_mesh.upper_right == [10., 10., 10.]
+    assert s.frequency_mesh.dimension == [5, 5, 5]
+    assert isinstance(s.frequency_group_structure, openmc.mgxs.EnergyGroups)
+    assert s.frequency_group_structure == openmc.mgxs.EnergyGroups([0.0, 0.63, 1.0e7])
+    assert s.frequency_num_delayed_groups == 6
+    assert s.flux_frequency == [1.0]*125*6
+    assert s.precursor_frequency == [1.0]*125*6
     assert s.trigger_active
     assert s.trigger_max_batches == 10000
     assert s.trigger_batch_interval == 50

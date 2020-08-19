@@ -345,7 +345,10 @@ class Solver(object):
         unity_mesh.type = mesh.type
         unity_mesh.dimension = [1,1,1]
         unity_mesh.lower_left  = mesh.lower_left
-        unity_mesh.width = [i*j for i,j in zip(mesh.dimension, mesh.width)]
+        if mesh.width is not None:
+            unity_mesh.width = [i*j for i,j in zip(mesh.dimension, mesh.width)]
+        else:
+            unity_mesh.width = [i-j for i,j in zip(mesh.upper_right, mesh.lower_left)]
         self._unity_mesh = unity_mesh
 
         # Set the power mesh to the shape mesh if it has not be set
