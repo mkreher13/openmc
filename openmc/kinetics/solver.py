@@ -44,16 +44,16 @@ class Solver(object):
     directory : str
         A directory to save the transient simulation data.
 
-    shape_mesh : openmc.mesh.Mesh
+    shape_mesh : openmc.RegularMesh
         Mesh by which shape is computed on.
 
-    unity_mesh : openmc.mesh.Mesh
+    unity_mesh : openmc.RegularMesh
         Mesh with one cell convering the entire geometry.
 
-    amplitude_mesh : openmc.mesh.Mesh
+    amplitude_mesh : openmc.RegularMesh
         Mesh by which amplitude is computed on.
 
-    tally_mesh : openmc.mesh.Mesh
+    tally_mesh : openmc.RegularMesh
         Mesh by which to tally currents
 
     geometry : openmc.geometry.Geometry

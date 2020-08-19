@@ -1021,7 +1021,8 @@ class Settings:
             if self._frequency_num_delayed_groups is not None:
                 subelement = ET.SubElement(element, "delayed_groups")
                 subelement.text = str(self._frequency_num_delayed_groups)
-
+            #Note: Sam commented out flux_frequency settings in his code
+            #Should it stay here or be put back into solver.py?
             if self._flux_frequency is not None:
                 subelement = ET.SubElement(element, "flux_frequency")
                 subelement.text = ' '.join(
@@ -1295,6 +1296,22 @@ class Settings:
             if elem is not None:
                 self.entropy_mesh = RegularMesh.from_xml_element(elem)
 
+    def _frequency_from_xml_element(self, root):
+        elem = root.find('frequency')
+        if elem is not None:
+            self.frequency = {}
+            for key in ('lower_left', 'upper_right', 'width',
+                    'group_structure', 'flux_frequency', 'precursor_frequency'):
+                value = get_text(elem, key)
+                if value is not None:
+                    self.frequency[key] = [float(x) for x in value.split()]
+            value = get_text(elem, 'dimension')
+            if value is not None:
+                self.frequency['dimension'] = [int(x) for x in value.split()]
+            value = get_text(elem, 'delayed_groups')
+            if value is not None:
+                self.frequency['delayed_groups'] = int(value)
+
     def _trigger_from_xml_element(self, root):
         elem = root.find('trigger')
         if elem is not None:
@@ -1518,6 +1535,7 @@ class Settings:
         settings._survival_biasing_from_xml_element(root)
         settings._cutoff_from_xml_element(root)
         settings._entropy_mesh_from_xml_element(root)
+        settings._frequency_from_xml_element(root)
         settings._trigger_from_xml_element(root)
         settings._no_reduce_from_xml_element(root)
         settings._verbosity_from_xml_element(root)
