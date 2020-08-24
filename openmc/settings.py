@@ -7,7 +7,7 @@ from xml.etree import ElementTree as ET
 import openmc.checkvalue as cv
 from . import VolumeCalculation, Source, RegularMesh
 import openmc
-from ._xml import clean_indentation, get_text
+from ._xml import clean_indentation, get_text, reorder_attributes
 
 
 class RunMode(Enum):
@@ -1505,6 +1505,7 @@ class Settings:
             p /= 'settings.xml'
 
         # Write the XML Tree to the settings.xml file
+        reorder_attributes(root_element)  # TODO: Remove when support is Python 3.8+
         tree = ET.ElementTree(root_element)
         tree.write(str(p), xml_declaration=True, encoding='utf-8')
 

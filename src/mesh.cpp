@@ -35,8 +35,8 @@ namespace openmc {
 
 namespace model {
 
-std::vector<std::unique_ptr<Mesh>> meshes;
 std::unordered_map<int32_t, int32_t> mesh_map;
+std::vector<std::unique_ptr<Mesh>> meshes;
 
 } // namespace model
 
@@ -2051,7 +2051,7 @@ void
 UnstructuredMesh::write(std::string base_filename) const {
   // add extension to the base name
   auto filename = base_filename + ".vtk";
-  write_message("Writing unstructured mesh " + filename + "...", 5);
+  write_message(5, "Writing unstructured mesh {}...", filename);
   filename = settings::path_output + filename;
 
   // write the tetrahedral elements of the mesh only
