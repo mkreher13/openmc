@@ -558,6 +558,50 @@ void read_settings_xml()
     entropy_on = true;
   }
 
+  // Frequency mesh
+  int32_t index_frequency_mesh = -1;
+  if (check_for_node(root, "frequency")) {
+
+    // Read the frequency mesh from <frequency>
+    auto node_frequency = root.child("frequency");
+    model::meshes.push_back(std::make_unique<RegularMesh>(node_frequency));
+
+    // Set frequency mesh index
+    index_frequency_mesh = model::meshes.size() - 1;
+
+    // Assign ID and set mapping
+    model::meshes.back()->id_ = 10001;
+    model::mesh_map[10000] = index_frequency_mesh;
+  }
+
+  if (index_frequency_mesh >= 0) {
+    auto* m = dynamic_cast<RegularMesh*>(
+      model::meshes[index_frequency_mesh].get());
+    if (!m) fatal_error("Only regular meshes can be used as a frequency mesh");
+    simulation::frequency_mesh = m;
+
+    if (m->shape_.size() == 0) {
+      // If the user did not specify how many mesh cells are to be used in
+      // each direction, we automatically determine an appropriate number of
+      // cells
+      int n = std::ceil(std::pow(n_particles / 20.0, 1.0/3.0));
+      m->shape_ = {n, n, n};
+      m->n_dimension_ = 3;
+
+      // Calculate width
+      m-> width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
+    }
+
+    // Check for group structure
+    auto node_frequency = root.child("frequency");
+    auto length = -1;
+    if (check_for_node(node_frequency, "group_structure")) {
+       length = word_count(get_node_value(node_frequency, "group_structure"));
+       simulation::frequency_energy_bins = length;
+    }
+  }
+
+
   // Uniform fission source weighting mesh
   int32_t i_ufs_mesh = -1;
   if (check_for_node(root, "ufs_mesh")) {
@@ -573,11 +617,11 @@ void read_settings_xml()
       "is deprecated. Please create a mesh using <mesh> and then reference "
       "it by specifying its ID in a <ufs_mesh> element.");
 
-    // Read entropy mesh from <entropy>
+    // Read ufs mesh from <uniform_fs>
     auto node_ufs = root.child("uniform_fs");
     model::meshes.push_back(std::make_unique<RegularMesh>(node_ufs));
 
-    // Set entropy mesh index
+    // Set ufs mesh index
     i_ufs_mesh = model::meshes.size() - 1;
 
     // Assign ID and set mapping

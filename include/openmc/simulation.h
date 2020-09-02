@@ -33,6 +33,7 @@ extern "C" double k_abs_tra;     //!< sum over batches of k_absorption * k_track
 extern double log_spacing;       //!< lethargy spacing for energy grid searches
 extern "C" int n_lost_particles; //!< cumulative number of lost particles
 extern "C" bool need_depletion_rx; //!< need to calculate depletion rx?
+extern "C" int frequency_energy_bins;
 extern "C" int restart_batch;   //!< batch at which a restart job resumed
 extern "C" bool satisfy_triggers; //!< have tally triggers been satisfied?
 extern "C" int total_gen;        //!< total number of generations simulated
@@ -40,6 +41,7 @@ extern double total_weight;  //!< Total source weight in a batch
 extern int64_t work_per_rank;         //!< number of particles per MPI rank
 
 extern const RegularMesh* entropy_mesh;
+extern const RegularMesh* frequency_mesh;
 extern const RegularMesh* ufs_mesh;
 
 extern std::vector<double> k_generation;

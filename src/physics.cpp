@@ -8,6 +8,7 @@
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
+#include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"

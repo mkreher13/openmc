@@ -274,6 +274,7 @@ double k_abs_tra {0.0};
 double log_spacing;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
+int frequency_energy_bins;
 int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};
@@ -281,6 +282,7 @@ double total_weight;
 int64_t work_per_rank;
 
 const RegularMesh* entropy_mesh {nullptr};
+const RegularMesh* frequency_mesh {nullptr};
 const RegularMesh* ufs_mesh {nullptr};
 
 std::vector<double> k_generation;
