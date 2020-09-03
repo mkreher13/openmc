@@ -47,11 +47,13 @@ bool dagmc                   {false};
 bool delayed_photon_scaling  {true};
 bool entropy_on              {false};
 bool event_based             {false};
+bool flux_frequency_on       {false};
 bool legendre_to_tabular     {true};
 bool material_cell_offsets   {true};
 bool output_summary          {true};
 bool output_tallies          {true};
 bool particle_restart_run    {false};
+bool precursor_frequency_on  {false};
 bool photon_transport        {false};
 bool reduce_tallies          {true};
 bool res_scat_on             {false};
@@ -560,6 +562,8 @@ void read_settings_xml()
 
   // Frequency mesh
   int32_t index_frequency_mesh = -1;
+  int num_frequency_energy_groups = 0;
+  int num_frequency_delayed_groups = 0;
   if (check_for_node(root, "frequency")) {
 
     // Read the frequency mesh from <frequency>
@@ -579,6 +583,7 @@ void read_settings_xml()
       model::meshes[index_frequency_mesh].get());
     if (!m) fatal_error("Only regular meshes can be used as a frequency mesh");
     simulation::frequency_mesh = m;
+    int shape_product = m->shape_[0] * m->shape_[1] * m->shape_[2];
 
     if (m->shape_.size() == 0) {
       // If the user did not specify how many mesh cells are to be used in
@@ -596,13 +601,35 @@ void read_settings_xml()
     auto node_frequency = root.child("frequency");
     if (check_for_node(node_frequency, "group_structure")) {
       auto frequency_energy_bins = get_node_array<float>(node_frequency, "group_structure");
-      int num_frequency_energy_groups = frequency_energy_bins.size() - 1;
       float frequency_energy_bin_avg[num_frequency_energy_groups];
       for (int i = 0; i < num_frequency_energy_groups; ++i) {
         frequency_energy_bin_avg[i] = 1./2. * (frequency_energy_bins[i] + frequency_energy_bins[i + 1]);
       }
-    } else {
-      int num_frequency_energy_groups = 0;
+    }
+
+    // Check for num delayed groups
+    if (check_for_node(node_frequency, "delayed_groups")) {
+      int num_frequency_delayed_groups = std::stoi(get_node_value(node_frequency, "delayed_groups"));
+    }
+
+    // Check for flux frequency
+    if (check_for_node(node_frequency, "flux_frequency")) {
+      auto flux_frequency = get_node_array<float>(node_frequency, "flux_frequency");
+      settings::flux_frequency_on = true;
+    }
+
+    // Check for precursor frequency
+    if (check_for_node(node_frequency, "precursor_frequency")) {
+      float precursor_frequency[shape_product][num_frequency_delayed_groups];
+      auto temp_real = get_node_array<float>(node_frequency, "precursor_frequency");
+//      for (int i = 0; i < shape_product; ++i) {
+//        for (int j = 0; i < num_frequency_delayed_groups; ++j) {
+//          precursor_frequency[i][j] = 
+//	}
+//      }
+
+      precursor_frequency_on = true;
+
     }
   }
 
