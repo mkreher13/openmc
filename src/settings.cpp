@@ -594,10 +594,15 @@ void read_settings_xml()
 
     // Check for group structure
     auto node_frequency = root.child("frequency");
-    auto length = -1;
     if (check_for_node(node_frequency, "group_structure")) {
-       length = word_count(get_node_value(node_frequency, "group_structure"));
-       simulation::frequency_energy_bins = length;
+      auto frequency_energy_bins = get_node_array<float>(node_frequency, "group_structure");
+      int num_frequency_energy_groups = frequency_energy_bins.size() - 1;
+      float frequency_energy_bin_avg[num_frequency_energy_groups];
+      for (int i = 0; i < num_frequency_energy_groups; ++i) {
+        frequency_energy_bin_avg[i] = 1./2. * (frequency_energy_bins[i] + frequency_energy_bins[i + 1]);
+      }
+    } else {
+      int num_frequency_energy_groups = 0;
     }
   }
 

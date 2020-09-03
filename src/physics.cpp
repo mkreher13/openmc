@@ -87,6 +87,10 @@ void sample_neutron_reaction(Particle& p)
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
 
+  if (i_nuclide == 0) {
+    auto inverse_velocity = 1. / ( sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0);
+  }
+
   // Save which nuclide particle had collision with
   p.event_nuclide_ = i_nuclide;
 
