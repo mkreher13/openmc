@@ -600,8 +600,8 @@ void read_settings_xml()
     // Check for group structure
     auto node_frequency = root.child("frequency");
     if (check_for_node(node_frequency, "group_structure")) {
-      auto frequency_energy_bins = get_node_array<float>(node_frequency, "group_structure");
-      float frequency_energy_bin_avg[num_frequency_energy_groups];
+      auto frequency_energy_bins = get_node_array<double>(node_frequency, "group_structure");
+      double frequency_energy_bin_avg[num_frequency_energy_groups];
       for (int i = 0; i < num_frequency_energy_groups; ++i) {
         frequency_energy_bin_avg[i] = 1./2. * (frequency_energy_bins[i] + frequency_energy_bins[i + 1]);
       }
@@ -610,26 +610,24 @@ void read_settings_xml()
     // Check for num delayed groups
     if (check_for_node(node_frequency, "delayed_groups")) {
       int num_frequency_delayed_groups = std::stoi(get_node_value(node_frequency, "delayed_groups"));
+
+      // Check for precursor frequency
+      if (check_for_node(node_frequency, "precursor_frequency")) {
+        double precursor_frequency[shape_product][num_frequency_delayed_groups];
+	auto temp = get_node_array<double>(node_frequency, "precursor_frequency");
+	for (int i = 0; i < num_frequency_delayed_groups; ++i) {
+          for (int j = 0; j < shape_product; ++j) {
+	    precursor_frequency[i][j] = temp[j+shape_product*i];
+	  }
+	}
+	precursor_frequency_on = true;
+      }
     }
 
     // Check for flux frequency
     if (check_for_node(node_frequency, "flux_frequency")) {
-      auto flux_frequency = get_node_array<float>(node_frequency, "flux_frequency");
+      auto flux_frequency = get_node_array<double>(node_frequency, "flux_frequency");
       settings::flux_frequency_on = true;
-    }
-
-    // Check for precursor frequency
-    if (check_for_node(node_frequency, "precursor_frequency")) {
-      float precursor_frequency[shape_product][num_frequency_delayed_groups];
-      auto temp_real = get_node_array<float>(node_frequency, "precursor_frequency");
-//      for (int i = 0; i < shape_product; ++i) {
-//        for (int j = 0; i < num_frequency_delayed_groups; ++j) {
-//          precursor_frequency[i][j] = 
-//	}
-//      }
-
-      precursor_frequency_on = true;
-
     }
   }
 
