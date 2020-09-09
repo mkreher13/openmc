@@ -274,7 +274,6 @@ double k_abs_tra {0.0};
 double log_spacing;
 int n_lost_particles {0};
 bool need_depletion_rx {false};
-int frequency_energy_bins;
 int restart_batch;
 bool satisfy_triggers {false};
 int total_gen {0};

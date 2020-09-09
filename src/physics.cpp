@@ -8,7 +8,6 @@
 #include "openmc/error.h"
 #include "openmc/material.h"
 #include "openmc/math_functions.h"
-#include "openmc/mesh.h"
 #include "openmc/message_passing.h"
 #include "openmc/nuclide.h"
 #include "openmc/photon.h"
@@ -86,8 +85,14 @@ void sample_neutron_reaction(Particle& p)
 {
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
+  int mesh_bin = -1;
+  int freq_group = -1;
 
   if (i_nuclide == 0) {
+    mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+    //freq_group = lower_bound_index(settings::frequency_energy_bins.begin(), 
+    //  settings::frequency_energy_bins.end(), p.E_);
+
     auto inverse_velocity = 1. / ( sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0);
   }
 
