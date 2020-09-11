@@ -328,7 +328,8 @@ enum class TallyEvent {
   LATTICE,
   KILL,
   SCATTER,
-  ABSORB
+  ABSORB,
+  TIME_REMOVAL
 };
 
 // Tally score type -- if you change these, make sure you also update the

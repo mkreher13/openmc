@@ -87,6 +87,7 @@ void sample_neutron_reaction(Particle& p)
   int i_nuclide = sample_nuclide(p);
   int mesh_bin = -1;
   int freq_group = -1;
+  double freq = 0;
 
   if (i_nuclide == 0) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
@@ -94,63 +95,75 @@ void sample_neutron_reaction(Particle& p)
       settings::frequency_energy_bins.end(), p.E_);
     freq_group = settings::frequency_energy_bins.size() - freq_group;
     auto inverse_velocity = 1. / ( sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0);
-    double freq = settings::flux_frequency[freq_group] * inverse_velocity;
-  }
+    if (settings::flux_frequency_on) {
+      freq = settings::flux_frequency[freq_group] * inverse_velocity;
+    }
 
-  // Save which nuclide particle had collision with
-  p.event_nuclide_ = i_nuclide;
+    p.event_ = TallyEvent::TIME_REMOVAL;
 
-  // Create fission bank sites. Note that while a fission reaction is sampled,
-  // it never actually "happens", i.e. the weight of the particle does not
-  // change when sampling fission sites. The following block handles all
-  // absorption (including fission)
+    if (freq < 0) {
+      p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
+    } else {
+      p.alive_ = false;
+      return;
+    }
+  } else {
 
-  const auto& nuc {data::nuclides[i_nuclide]};
+    // Save which nuclide particle had collision with
+    p.event_nuclide_ = i_nuclide;
 
-  if (nuc->fissionable_) {
-    auto& rx = sample_fission(i_nuclide, p);
-    if (settings::run_mode == RunMode::EIGENVALUE) {
-      create_fission_sites(p, i_nuclide, rx);
-    } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
-      settings::create_fission_neutrons) {
-      create_fission_sites(p, i_nuclide, rx);
+    // Create fission bank sites. Note that while a fission reaction is sampled,
+    // it never actually "happens", i.e. the weight of the particle does not
+    // change when sampling fission sites. The following block handles all
+    // absorption (including fission)
 
-      // Make sure particle population doesn't grow out of control for
-      // subcritical multiplication problems.
-      if (p.secondary_bank_.size() >= 10000) {
-        fatal_error("The secondary particle bank appears to be growing without "
-        "bound. You are likely running a subcritical multiplication problem "
-        "with k-effective close to or greater than one.");
+    const auto& nuc {data::nuclides[i_nuclide]};
+
+    if (nuc->fissionable_) {
+      auto& rx = sample_fission(i_nuclide, p);
+      if (settings::run_mode == RunMode::EIGENVALUE) {
+        create_fission_sites(p, i_nuclide, rx);
+      } else if (settings::run_mode == RunMode::FIXED_SOURCE &&
+        settings::create_fission_neutrons) {
+        create_fission_sites(p, i_nuclide, rx);
+
+        // Make sure particle population doesn't grow out of control for
+        // subcritical multiplication problems.
+        if (p.secondary_bank_.size() >= 10000) {
+          fatal_error("The secondary particle bank appears to be growing without "
+          "bound. You are likely running a subcritical multiplication problem "
+          "with k-effective close to or greater than one.");
+        }
       }
     }
-  }
 
-  // Create secondary photons
-  if (settings::photon_transport) {
-    p.stream_ = STREAM_PHOTON;
-    sample_secondary_photons(p, i_nuclide);
-	  p.stream_ = STREAM_TRACKING;
-  }
+    // Create secondary photons
+    if (settings::photon_transport) {
+      p.stream_ = STREAM_PHOTON;
+      sample_secondary_photons(p, i_nuclide);
+  	    p.stream_ = STREAM_TRACKING;
+    }
 
-  // If survival biasing is being used, the following subroutine adjusts the
-  // weight of the particle. Otherwise, it checks to see if absorption occurs
+    // If survival biasing is being used, the following subroutine adjusts the
+    // weight of the particle. Otherwise, it checks to see if absorption occurs
 
-  if (p.neutron_xs_[i_nuclide].absorption > 0.0) {
-    absorption(p, i_nuclide);
-  } else {
-    p.wgt_absorb_ = 0.0;
-  }
-  if (!p.alive_) return;
+    if (p.neutron_xs_[i_nuclide].absorption > 0.0) {
+      absorption(p, i_nuclide);
+    } else {
+      p.wgt_absorb_ = 0.0;
+    }
+    if (!p.alive_) return;
 
-  // Sample a scattering reaction and determine the secondary energy of the
-  // exiting neutron
-  scatter(p, i_nuclide);
+    // Sample a scattering reaction and determine the secondary energy of the
+    // exiting neutron
+    scatter(p, i_nuclide);
 
-  // Advance URR seed stream 'N' times after energy changes
-  if (p.E_ != p.E_last_) {
-    p.stream_ = STREAM_URR_PTABLE;
-    advance_prn_seed(data::nuclides.size(), p.current_seed());
-    p.stream_ = STREAM_TRACKING;
+    // Advance URR seed stream 'N' times after energy changes
+    if (p.E_ != p.E_last_) {
+      p.stream_ = STREAM_URR_PTABLE;
+      advance_prn_seed(data::nuclides.size(), p.current_seed());
+      p.stream_ = STREAM_TRACKING;
+    }
   }
 
   // Play russian roulette if survival biasing is turned on
