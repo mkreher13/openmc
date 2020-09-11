@@ -53,8 +53,8 @@ bool material_cell_offsets   {true};
 bool output_summary          {true};
 bool output_tallies          {true};
 bool particle_restart_run    {false};
-bool precursor_frequency_on  {false};
 bool photon_transport        {false};
+bool precursor_frequency_on  {false};
 bool reduce_tallies          {true};
 bool res_scat_on             {false};
 bool restart_run             {false};
@@ -87,6 +87,9 @@ int32_t gen_per_batch {1};
 int64_t n_particles {-1};
 
 int64_t max_particles_in_flight {100000};
+
+std::vector<double> flux_frequency;
+std::vector<double> frequency_energy_bins;
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -600,11 +603,13 @@ void read_settings_xml()
     // Check for group structure
     auto node_frequency = root.child("frequency");
     if (check_for_node(node_frequency, "group_structure")) {
-      auto frequency_energy_bins = get_node_array<double>(node_frequency, "group_structure");
+      auto f_energy_bins = get_node_array<double>(node_frequency, "group_structure");
+      num_frequency_energy_groups = f_energy_bins.size() - 1;
       double frequency_energy_bin_avg[num_frequency_energy_groups];
       for (int i = 0; i < num_frequency_energy_groups; ++i) {
-        frequency_energy_bin_avg[i] = 1./2. * (frequency_energy_bins[i] + frequency_energy_bins[i + 1]);
+        frequency_energy_bin_avg[i] = 1./2. * (f_energy_bins[i] + f_energy_bins[i + 1]);
       }
+      settings::frequency_energy_bins = f_energy_bins;
     }
 
     // Check for num delayed groups
@@ -620,7 +625,7 @@ void read_settings_xml()
 	    precursor_frequency[i][j] = temp[j+shape_product*i];
 	  }
 	}
-	precursor_frequency_on = true;
+	settings::precursor_frequency_on = true;
       }
     }
 

@@ -90,10 +90,11 @@ void sample_neutron_reaction(Particle& p)
 
   if (i_nuclide == 0) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
-    //freq_group = lower_bound_index(settings::frequency_energy_bins.begin(), 
-    //  settings::frequency_energy_bins.end(), p.E_);
-
+    freq_group = lower_bound_index(settings::frequency_energy_bins.begin(), 
+      settings::frequency_energy_bins.end(), p.E_);
+    freq_group = settings::frequency_energy_bins.size() - freq_group;
     auto inverse_velocity = 1. / ( sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0);
+    double freq = settings::flux_frequency[freq_group] * inverse_velocity;
   }
 
   // Save which nuclide particle had collision with
