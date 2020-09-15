@@ -54,7 +54,7 @@ def map_array(array, from_shape, to_shape, normalize=True, lcm_applied=False):
 
         # condense along dimension
         if from_shape[d] > to_shape[d]:
-            ratio = from_shape[d] / to_shape[d]
+            ratio = int(from_shape[d] / to_shape[d])
             block = (1,) * d + (ratio,) + (1,) * (num_dims-1-d)
             axes = tuple(range(num_dims,2*num_dims))
             if normalize:
@@ -149,12 +149,12 @@ def block_view(A, block):
             raise ValueError(msg)
 
     # simple shape and strides computations may seem at first strange
-    # unless one is able to recognize the 'tuple additions' involved ;-)
+    # unless one is able to recognize the 'tuple additions' involved
     shape = ()
     strides = ()
 
     for i,b in enumerate(block):
-        shape = shape + (A.shape[i] / block[i],)
+        shape = shape + (int(A.shape[i] / block[i]),)
         strides = strides + (b * A.strides[i],)
 
     shape = shape + block
