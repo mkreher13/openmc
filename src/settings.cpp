@@ -48,6 +48,7 @@ bool delayed_photon_scaling  {true};
 bool entropy_on              {false};
 bool event_based             {false};
 bool flux_frequency_on       {false};
+bool frequency_method_on     {false};
 bool legendre_to_tabular     {true};
 bool material_cell_offsets   {true};
 bool output_summary          {true};
@@ -568,6 +569,8 @@ void read_settings_xml()
   int num_frequency_energy_groups = 0;
   int num_frequency_delayed_groups = 0;
   if (check_for_node(root, "frequency")) {
+
+    settings::frequency_method_on = true;
 
     // Read the frequency mesh from <frequency>
     auto node_frequency = root.child("frequency");
