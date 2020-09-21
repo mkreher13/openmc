@@ -109,6 +109,8 @@ private:
   static int XS_ABSORPTION;
   static int XS_FISSION;
   static int XS_NU_FISSION;
+  static int XS_PROMPT_NU_FISSION;
+  static int XS_DELAYED_NU_FISSION;
   static int XS_PHOTON_PROD;
 };
 

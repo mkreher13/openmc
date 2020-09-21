@@ -45,6 +45,8 @@ int Nuclide::XS_ABSORPTION {1};
 int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
+int Nuclide::XS_PROMPT_NU_FISSION {5};
+int Nuclide::XS_DELAYED_NU_FISSION {6};
 
 Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
