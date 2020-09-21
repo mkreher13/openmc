@@ -77,7 +77,9 @@ extern "C" int64_t n_particles;              //!< number of particles per genera
 extern int64_t max_particles_in_flight; //!< Max num. event-based particles in flight
 
 extern std::vector<double> flux_frequency; //!< flux frequency used for frequency method
+extern std::vector<double> precursor_frequency; //!< precursor frequency used for frequency method
 extern std::vector<double> frequency_energy_bins; //!< energy groups for frequency method
+extern int num_frequency_delayed_groups;   //!< number of precursor groups used by frequency method
 
 extern ElectronTreatment electron_treatment;       //!< how to treat secondary electrons
 extern std::array<double, 4> energy_cutoff;  //!< Energy cutoff in [eV] for each particle type

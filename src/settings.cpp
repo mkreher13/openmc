@@ -90,7 +90,10 @@ int64_t n_particles {-1};
 int64_t max_particles_in_flight {100000};
 
 std::vector<double> flux_frequency;
+std::vector<double> precursor_frequency;
 std::vector<double> frequency_energy_bins;
+int num_frequency_delayed_groups;
+
 
 ElectronTreatment electron_treatment {ElectronTreatment::TTB};
 std::array<double, 4> energy_cutoff {0.0, 1000.0, 0.0, 0.0};
@@ -567,7 +570,6 @@ void read_settings_xml()
   // Frequency mesh
   int32_t index_frequency_mesh = -1;
   int num_frequency_energy_groups = 0;
-  int num_frequency_delayed_groups = 0;
   if (check_for_node(root, "frequency")) {
 
     settings::frequency_method_on = true;
@@ -617,18 +619,22 @@ void read_settings_xml()
 
     // Check for num delayed groups
     if (check_for_node(node_frequency, "delayed_groups")) {
-      int num_frequency_delayed_groups = std::stoi(get_node_value(node_frequency, "delayed_groups"));
+      int num_f_delayed_groups = std::stoi(get_node_value(node_frequency, "delayed_groups"));
 
       // Check for precursor frequency
       if (check_for_node(node_frequency, "precursor_frequency")) {
-        double precursor_frequency[shape_product][num_frequency_delayed_groups];
-	auto temp = get_node_array<double>(node_frequency, "precursor_frequency");
-	for (int i = 0; i < num_frequency_delayed_groups; ++i) {
-          for (int j = 0; j < shape_product; ++j) {
-	    precursor_frequency[i][j] = temp[j+shape_product*i];
-	  }
-	}
+	//double[][] precursor_f = new double[shape_product][num_f_delayed_groups];
+//	std::vector<double> precursor_f[shape_product][num_f_delayed_groups];
+	//std::vector<double> temp = get_node_array<double>(node_frequency, "precursor_frequency");
+	settings::precursor_frequency = get_node_array<double>(node_frequency, "precursor_frequency");
+	//for (int i = 0; i < num_f_delayed_groups; ++i) {
+        //  for (int j = 0; j < shape_product; ++j) {
+        //    precursor_f[i][j] = temp[j+shape_product*i];
+	//  }
+	//}
 	settings::precursor_frequency_on = true;
+	//settings::precursor_frequency = precursor_f;
+	settings::num_frequency_delayed_groups = num_f_delayed_groups;
       }
     }
 
