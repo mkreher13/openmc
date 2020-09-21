@@ -558,6 +558,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
   micro.elastic = CACHE_INVALID;
   micro.thermal = 0.0;
   micro.thermal_elastic = 0.0;
+  micro.delayed_nu_fission.resize(n_precursor_);
 
   // Check to see if there is multipole data present at this energy
   bool use_mp = false;
@@ -579,8 +580,10 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       sig_f * this->nu(p.E_, EmissionMode::total) : 0.0;
     micro.prompt_nu_fission = fissionable_ ?
       sig_f * this->nu(p.E_, EmissionMode::prompt) : 0.0;
-    micro.delayed_nu_fission = fissionable_ ?
-      sig_f * this->nu(p.E_, EmissionMode::delayed) : 0.0;
+    for (int d = 0; d < n_precursor_; ++d) {
+      micro.delayed_nu_fission[d] = fissionable_ ?
+        sig_f * this->nu(p.E_, EmissionMode::delayed, d) : 0.0;
+    }
 
     if (simulation::need_depletion_rx) {
       // Only non-zero reaction is (n,gamma)
@@ -688,13 +691,17 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
         + f*xs(i_grid + 1, XS_NU_FISSION);
       micro.prompt_nu_fission = (1.0 - f)*xs(i_grid, XS_PROMPT_NU_FISSION)
         + f*xs(i_grid + 1, XS_PROMPT_NU_FISSION);
-      micro.delayed_nu_fission = (1.0 - f)*xs(i_grid, XS_DELAYED_NU_FISSION)
-	+ f*xs(i_grid + 1, XS_DELAYED_NU_FISSION);
+      for (int d = 0; d < n_precursor_; ++d) {
+        micro.delayed_nu_fission[d] = (1.0 - f)*xs(i_grid, XS_DELAYED_NU_FISSION)
+	  + f*xs(i_grid + 1, XS_DELAYED_NU_FISSION);
+      }
     } else {
       micro.fission = 0.0;
       micro.nu_fission = 0.0;
       micro.prompt_nu_fission = 0.0;
-      micro.delayed_nu_fission = 0.0;
+      for (int d = 0; d < n_precursor_; ++d) {
+        micro.delayed_nu_fission[d] = 0.0;
+      }
     }
 
     // Calculate microscopic nuclide photon production cross section
@@ -800,6 +807,7 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
 {
   auto& micro = p.neutron_xs_[index_];
   micro.use_ptable = true;
+  micro.delayed_nu_fission.resize(n_precursor_);
 
   // Create a shorthand for the URR data
   const auto& urr = urr_data_[i_temp];
@@ -921,7 +929,9 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
   if (fissionable_) {
     micro.nu_fission = nu(p.E_, EmissionMode::total) * micro.fission;
     micro.prompt_nu_fission = nu(p.E_, EmissionMode::prompt) * micro.fission;
-    micro.delayed_nu_fission = nu(p.E_, EmissionMode::delayed) * micro.fission;
+    for (int d = 0; d < n_precursor_; ++d) {
+      micro.delayed_nu_fission[d] = nu(p.E_, EmissionMode::delayed, d) * micro.fission;
+    }
   }
 
 }

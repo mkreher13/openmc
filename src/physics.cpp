@@ -646,6 +646,8 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
 
 void absorption(Particle& p, int i_nuclide)
 {
+  int mesh_bin = -1;
+
   if (settings::survival_biasing) {
     // Determine weight absorbed in survival biasing
     p.wgt_absorb_ = p.wgt_ * p.neutron_xs_[i_nuclide].absorption /
@@ -666,6 +668,12 @@ void absorption(Particle& p, int i_nuclide)
         prn(p.current_seed()) * p.neutron_xs_[i_nuclide].total) {
       // Score absorption estimate of keff
       if (settings::run_mode == RunMode::EIGENVALUE) {
+	double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
+	if (settings::precursor_frequency_on) {
+	  mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+	} else {
+	  mesh_bin = -1;
+	}
         p.keff_tally_absorption_ += p.wgt_ * p.neutron_xs_[
           i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
       }
