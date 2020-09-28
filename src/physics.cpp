@@ -664,21 +664,20 @@ void absorption(Particle& p, int i_nuclide)
       double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
       if (settings::precursor_frequency_on) {
         mesh_bin = simulation::frequency_mesh->get_bin(p.r());
-   
-        for (int d; d < nuc->n_precursor_; ++d) {
-          double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d];
-	  if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-            int shape_product = simulation::frequency_mesh->shape_[0] *
-		                simulation::frequency_mesh->shape_[1] *
-				simulation::frequency_mesh->shape_[2];
-	    delayed_nu_fission = delayed_nu_fission
-		    * settings::precursor_frequency[mesh_bin+shape_product*d];
-	  }
-        }
       }
-      
-      p.keff_tally_absorption_ += p.wgt_absorb_ * p.neutron_xs_[
-        i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
+   
+      for (int d = 0; d < nuc->n_precursor_; ++d) {
+        double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d];
+	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
+          int shape_product = simulation::frequency_mesh->shape_[0] *
+		              simulation::frequency_mesh->shape_[1] *
+		              simulation::frequency_mesh->shape_[2];
+	  delayed_nu_fission = delayed_nu_fission
+		               * settings::precursor_frequency[mesh_bin+shape_product*d];
+	}
+	nu_fission += delayed_nu_fission;
+      }
+      p.keff_tally_absorption_ += p.wgt_absorb_ * nu_fission  / p.neutron_xs_[i_nuclide].absorption;
     }
   } else {
     // See if disappearance reaction happens
@@ -691,21 +690,20 @@ void absorption(Particle& p, int i_nuclide)
 	double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
 	if (settings::precursor_frequency_on) {
 	  mesh_bin = simulation::frequency_mesh->get_bin(p.r());
-
-	  for (int d; d < nuc->n_precursor_; ++d) {
-            double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d];
-            if (mesh_bin !=-1 && d<= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-	      int shape_product = simulation::frequency_mesh->shape_[0] *
-		                  simulation::frequency_mesh->shape_[1] *
-				  simulation::frequency_mesh->shape_[2];
-	      delayed_nu_fission = delayed_nu_fission 
-		      * settings::precursor_frequency[mesh_bin+shape_product*d];
-	    }
-	  }
 	}
-        
-	p.keff_tally_absorption_ += p.wgt_ * p.neutron_xs_[
-          i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
+
+	for (int d = 0; d < nuc->n_precursor_; ++d) {
+          double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d];
+          if (mesh_bin !=-1 && d<= settings::num_frequency_delayed_groups && nuc->fissionable_) {
+	    int shape_product = simulation::frequency_mesh->shape_[0] *
+		                simulation::frequency_mesh->shape_[1] *
+	                        simulation::frequency_mesh->shape_[2];
+	    delayed_nu_fission = delayed_nu_fission 
+		                * settings::precursor_frequency[mesh_bin+shape_product*d];
+	  }
+	  nu_fission += delayed_nu_fission;
+	}
+	p.keff_tally_absorption_ += p.wgt_ * nu_fission / p.neutron_xs_[i_nuclide].absorption;
       }
 
       p.alive_ = false;
