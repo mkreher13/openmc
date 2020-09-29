@@ -390,8 +390,8 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
           * xs_[t](i, XS_FISSION);
 	xs_[t](i, XS_PROMPT_NU_FISSION) = nu(E, EmissionMode::prompt)
           * xs_[t](i, XS_FISSION);
-	for (int d = 0; d < n_precursor_; ++d) {
-	  xs_[t](i, XS_DELAYED_NU_FISSION) = nu(E, EmissionMode::delayed, d)
+	for (int d = 1; d <= n_precursor_; ++d) {
+	  xs_[t](i, XS_DELAYED_NU_FISSION, d-1) = nu(E, EmissionMode::delayed, d)
 	    * xs_[t](i, XS_FISSION);
 	}
       }
@@ -583,7 +583,7 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
     micro.prompt_nu_fission = fissionable_ ?
       sig_f * this->nu(p.E_, EmissionMode::prompt) : 0.0;
     for (int d = 1; d <= n_precursor_; ++d) {
-      micro.delayed_nu_fission[d] = fissionable_ ?
+      micro.delayed_nu_fission[d-1] = fissionable_ ?
         sig_f * this->nu(p.E_, EmissionMode::delayed, d) : 0.0;
     }
 
@@ -694,15 +694,15 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       micro.prompt_nu_fission = (1.0 - f)*xs(i_grid, XS_PROMPT_NU_FISSION)
         + f*xs(i_grid + 1, XS_PROMPT_NU_FISSION);
       for (int d = 1; d <= n_precursor_; ++d) {
-        micro.delayed_nu_fission[d] = (1.0 - f)*xs(i_grid, XS_DELAYED_NU_FISSION)
-	  + f*xs(i_grid + 1, XS_DELAYED_NU_FISSION);
+        micro.delayed_nu_fission[d-1] = (1.0 - f)*xs(i_grid, XS_DELAYED_NU_FISSION, d-1)
+	  + f*xs(i_grid + 1, XS_DELAYED_NU_FISSION, d-1);
       }
     } else {
       micro.fission = 0.0;
       micro.nu_fission = 0.0;
       micro.prompt_nu_fission = 0.0;
       for (int d = 1; d <= n_precursor_; ++d) {
-        micro.delayed_nu_fission[d] = 0.0;
+        micro.delayed_nu_fission[d-1] = 0.0;
       }
     }
 
@@ -932,7 +932,7 @@ void Nuclide::calculate_urr_xs(int i_temp, Particle& p) const
     micro.nu_fission = nu(p.E_, EmissionMode::total) * micro.fission;
     micro.prompt_nu_fission = nu(p.E_, EmissionMode::prompt) * micro.fission;
     for (int d = 1; d <= n_precursor_; ++d) {
-      micro.delayed_nu_fission[d] = nu(p.E_, EmissionMode::delayed, d) * micro.fission;
+      micro.delayed_nu_fission[d-1] = nu(p.E_, EmissionMode::delayed, d) * micro.fission;
     }
   }
 

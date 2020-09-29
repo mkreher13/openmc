@@ -667,7 +667,7 @@ void absorption(Particle& p, int i_nuclide)
       }
    
       for (int d = 1; d <= nuc->n_precursor_; ++d) {
-        double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d];
+        double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d-1];
 	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
           int shape_product = simulation::frequency_mesh->shape_[0] *
 		              simulation::frequency_mesh->shape_[1] *
@@ -693,7 +693,7 @@ void absorption(Particle& p, int i_nuclide)
 	}
 
 	for (int d = 1; d <= nuc->n_precursor_; ++d) {
-          double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d];
+          double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d-1];
           if (mesh_bin !=-1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
 	    int shape_product = simulation::frequency_mesh->shape_[0] *
 		                simulation::frequency_mesh->shape_[1] *
