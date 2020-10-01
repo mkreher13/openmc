@@ -390,8 +390,11 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
           * xs_[t](i, XS_FISSION);
 	xs_[t](i, XS_PROMPT_NU_FISSION) = nu(E, EmissionMode::prompt)
           * xs_[t](i, XS_FISSION);
+	// DANGER I don't know if adding "d-1" is enough to make this work. 
+	// Following errors suggest that it's not. 
 	for (int d = 1; d <= n_precursor_; ++d) {
 	  xs_[t](i, XS_DELAYED_NU_FISSION, d-1) = nu(E, EmissionMode::delayed, d)
+	  //xs_[t](i, XS_DELAYED_NU_FISSION + d-1) = nu(E, EmissionMode::delayed, d)
 	    * xs_[t](i, XS_FISSION);
 	}
       }
@@ -702,7 +705,9 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       micro.delayed_nu_fission.resize(n_precursor_);
       for (int d = 1; d <= n_precursor_; ++d) {
         micro.delayed_nu_fission[d-1] = (1.0 - f)*xs(i_grid, XS_DELAYED_NU_FISSION, d-1)
+        //micro.delayed_nu_fission[d-1] = (1.0 - f)*xs(i_grid, XS_DELAYED_NU_FISSION + d-1)
 	  + f*xs(i_grid + 1, XS_DELAYED_NU_FISSION, d-1);
+	  //+ f*xs(i_grid + 1, XS_DELAYED_NU_FISSION + d-1);
       }
     } else {
       micro.fission = 0.0;
