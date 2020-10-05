@@ -1117,6 +1117,8 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 
 void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Particle::Bank* site, uint64_t* seed)
 {
+  int mesh_bin = -1;
+  const auto& nuc {data::nuclides[i_nuclide]};
   // Sample cosine of angle -- fission neutrons are always emitted
   // isotropically. Sometimes in ACE data, fission reactions actually have
   // an angular distribution listed, but for those that do, it's simply just
@@ -1129,10 +1131,26 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
   site->u.y = std::sqrt(1.0 - mu*mu) * std::cos(phi);
   site->u.z = std::sqrt(1.0 - mu*mu) * std::sin(phi);
 
+  if (settings::precursor_frequency_on) {
+    mesh_bin = simulation::frequency_mesh->get_bin(site->r);
+  }
+  double nu_d = 0.0;
+  if (mesh_bin != -1 && nuc->fissionable_) {
+    int shape_product = simulation::frequency_mesh->shape_[0] *
+	            simulation::frequency_mesh->shape_[1] *
+		    simulation::frequency_mesh->shape_[2];
+    for (int d = 1; d <= nuc->n_precursor_; ++d) {
+      if (d <= settings::num_frequency_delayed_groups) {
+        nu_d += nuc->nu(E_in, Nuclide::EmissionMode::delayed, d)
+		* settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+      }
+    }
+  } else {
+    nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
+  }
+
   // Determine total nu, delayed nu, and delayed neutron fraction
-  const auto& nuc {data::nuclides[i_nuclide]};
   double nu_t = nuc->nu(E_in, Nuclide::EmissionMode::total);
-  double nu_d = nuc->nu(E_in, Nuclide::EmissionMode::delayed);
   double beta = nu_d / nu_t;
 
   if (prn(seed) < beta) {
