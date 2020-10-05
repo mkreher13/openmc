@@ -176,13 +176,32 @@ void sample_neutron_reaction(Particle& p)
 void
 create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 {
+  int mesh_bin = -1;
+  const auto& nuc {data::nuclides[i_nuclide]};
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
   double nu_t = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
-    i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].total;
+    i_nuclide].prompt_nu_fission / p.neutron_xs_[i_nuclide].total;
+
+  if (settings::precursor_frequency_on) {
+    mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+  }
+
+  for (int d = 1; d <= nuc->n_precursor_; ++d) {
+    double nu_delayed = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
+      i_nuclide].delayed_nu_fission[d-1] / p.neutron_xs_[i_nuclide].total;
+    if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
+      int shape_product = simulation::frequency_mesh->shape_[0] *
+	                  simulation::frequency_mesh->shape_[1] *
+			  simulation::frequency_mesh->shape_[2];
+      nu_delayed = nu_delayed
+	                   * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+    }
+    nu_t += nu_delayed; 
+  }
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
