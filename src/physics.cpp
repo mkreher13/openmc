@@ -1165,6 +1165,16 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
       // determine delayed neutron precursor yield for group j
       double yield = (*rx.products_[group].yield_)(E_in);
 
+      if (settings::precursor_frequency_on) {
+        mesh_bin = simulation::frequency_mesh->get_bin(site->r);
+        if (mesh_bin != -1 && group <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
+	  double shape_product = simulation::frequency_mesh->shape_[0] *
+		                 simulation::frequency_mesh->shape_[1] *
+				 simulation::frequency_mesh->shape_[2];
+          yield = yield * settings::precursor_frequency[mesh_bin+shape_product*(group-1)];
+	}
+      }
+
       // Check if this group is sampled
       prob += yield;
       if (xi < prob) break;

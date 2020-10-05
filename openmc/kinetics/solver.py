@@ -897,7 +897,7 @@ class Solver(object):
         state = self.states[time_point]
 
         if method == 'OMEGA' and time_point != 'START':
-            #settings_file.flux_frequency      = state.flux_frequency().flatten()
+            settings_file.flux_frequency      = state.flux_frequency().flatten()
             settings_file.precursor_frequency = state.precursor_frequency().flatten()
 
         state.initialize_mgxs()

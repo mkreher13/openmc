@@ -640,7 +640,7 @@ void read_settings_xml()
 
     // Check for flux frequency
     if (check_for_node(node_frequency, "flux_frequency")) {
-      auto flux_frequency = get_node_array<double>(node_frequency, "flux_frequency");
+      settings::flux_frequency = get_node_array<double>(node_frequency, "flux_frequency");
       settings::flux_frequency_on = true;
     }
   }
