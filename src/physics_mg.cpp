@@ -45,9 +45,6 @@ sample_reaction(Particle& p)
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
   
-  int mesh_bin = -1;
-  int freq_group = -1;
-
   if (model::materials[p.material_]->fissionable_) {
     if (settings::run_mode == RunMode::EIGENVALUE  ||
        (settings::run_mode == RunMode::FIXED_SOURCE &&
@@ -56,21 +53,17 @@ sample_reaction(Particle& p)
     }
   }
 
-  if (settings::frequency_method_on == true) {
-    mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+  if (settings::flux_frequency_on) {
     if (p.E_ <= settings::frequency_energy_bins[0] || 
         p.E_ > settings::frequency_energy_bins[
 	settings::frequency_energy_bins.size()-1]) {
-      freq_group = -1;
       p.freq = 0.0;
     } else {
-      freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
+      int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
 		                     settings::frequency_energy_bins.end(), p.E_);
       freq_group = settings::frequency_energy_bins.size() - freq_group;
-      if (freq_group != -1) {
-	p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
+      p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
       }
-    }
   } else {
     p.freq = 0.0;
   }
@@ -143,23 +136,18 @@ create_fission_sites(Particle& p)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   int mesh_bin = -1;
-  int freq_group = -1;
-  std::vector<double> delayed_nu_fission;
+  std::vector<double> delayed_nu_fission(p.macro_xs_.delayed_nu_fission.size());
 
-  if (settings::frequency_method_on == true) {
-    mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+  if (settings::flux_frequency_on) {
     if (p.E_ <= settings::frequency_energy_bins[0] ||
         p.E_ > settings::frequency_energy_bins[
 	settings::frequency_energy_bins.size()-1]) {
-      freq_group = -1;
       p.freq = 0.0;
     } else {
-      freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
+      int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
 		                     settings::frequency_energy_bins.end(), p.E_);
       freq_group = settings::frequency_energy_bins.size() - freq_group;
-      if (freq_group != -1) {
-	p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
-      }
+      p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
     }
   } else {
     p.freq = 0.0;
@@ -173,7 +161,6 @@ create_fission_sites(Particle& p)
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
   }
 
-  delayed_nu_fission.resize(p.macro_xs_.delayed_nu_fission.size());
   for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
     delayed_nu_fission[d-1] = p.macro_xs_.delayed_nu_fission[d-1];
     double nu_delayed = p.wgt_ / simulation::keff * weight * delayed_nu_fission[d-1] /

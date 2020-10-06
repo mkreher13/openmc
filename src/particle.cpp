@@ -211,33 +211,25 @@ Particle::event_advance()
 
   // Adjust the weight to account for the flux frequency
   int mesh_bin = -1;
-  int freq_group;
   if (settings::flux_frequency_on) {
-    mesh_bin = simulation::frequency_mesh->get_bin(r());
     
     if (E_ <= settings::frequency_energy_bins[0] || 
         E_ > settings::frequency_energy_bins[
 	     settings::frequency_energy_bins.size()-1]) {
-      freq_group = -1;
+      freq = 0.0;
     } else {
-      freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
+      int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
 		      settings::frequency_energy_bins.end(), E_);
       freq_group = settings::frequency_energy_bins.size() - freq_group;
-    }
-
-    if (freq_group != -1) {
       if (settings::run_CE) {
-        freq = settings::flux_frequency[freq_group];
-        double velocity = sqrt(2*E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0;
-        freq = freq / velocity;
+	double velocity = sqrt(2*E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0;
+	freq = settings::flux_frequency[freq_group] / velocity;
       } else {
 	freq = settings::flux_frequency[freq_group] / macro_xs_.inverse_velocity;
       }
-    } else {
-      freq = 0.0;
-    } 
+    }
   } else {
-     freq = 0.0;
+    freq = 0.0;
   }
 
   // Sample a distance to collision
@@ -282,7 +274,7 @@ Particle::event_advance()
 		             * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
       }
       nu_fission += delayed_nu_fission;
-    }  
+    }
 
     keff_tally_tracklength_ += wgt_ * distance * nu_fission;
   }
