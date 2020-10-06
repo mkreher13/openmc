@@ -144,6 +144,7 @@ create_fission_sites(Particle& p)
 
   int mesh_bin = -1;
   int freq_group = -1;
+  std::vector<double> delayed_nu_fission;
 
   if (settings::frequency_method_on == true) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
@@ -172,9 +173,10 @@ create_fission_sites(Particle& p)
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
   }
 
+  delayed_nu_fission.resize(p.macro_xs_.delayed_nu_fission.size());
   for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
-    double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
-    double nu_delayed = p.wgt_ / simulation::keff * weight * delayed_nu_fission /
+    delayed_nu_fission[d-1] = p.macro_xs_.delayed_nu_fission[d-1];
+    double nu_delayed = p.wgt_ / simulation::keff * weight * delayed_nu_fission[d-1] /
 	                (p.macro_xs_.total + abs(p.freq));
 
     if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
@@ -183,7 +185,7 @@ create_fission_sites(Particle& p)
 	 	 	  simulation::frequency_mesh->shape_[2];
       nu_delayed = nu_delayed 
 	      	   * settings::precursor_frequency[mesh_bin+shape_product*(d-1)]; 
-      delayed_nu_fission = delayed_nu_fission 
+      delayed_nu_fission[d-1] = delayed_nu_fission[d-1] 
 	                   * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
     }
     nu_t += nu_delayed;
@@ -235,7 +237,7 @@ create_fission_sites(Particle& p)
     // Sample secondary energy distribution for the fission reaction
     int dg;
     int gout;
-    data::mg.macro_xs_[p.material_].sample_fission_energy(p.g_, dg, gout,
+    data::mg.macro_xs_[p.material_].sample_fission_energy(p.g_, delayed_nu_fission, dg, gout,
       p.current_seed());
 
     // Store the energy and delayed groups on the fission bank

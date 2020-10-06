@@ -532,7 +532,7 @@ Mgxs::get_xs(MgxsType xstype, int gin, const int* gout, const double* mu,
 //==============================================================================
 
 void
-Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
+Mgxs::sample_fission_energy(int gin, std::vector<double> delayed_nu_fission, int& dg, int& gout, uint64_t* seed)
 {
   // This method assumes that the temperature and angle indices are set
 #ifdef _OPENMP
@@ -540,14 +540,18 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
 #else
   int tid = 0;
 #endif
+
+  double delayed_nu_fission_total = accumulate(delayed_nu_fission.begin(),
+		             delayed_nu_fission.end(), 0.0);
+
   XsData* xs_t = &xs[cache[tid].t];
-  double nu_fission = xs_t->nu_fission(cache[tid].a, gin);
+  double prompt_nu_fission = xs_t->prompt_nu_fission(cache[tid].a, gin);
 
   // Find the probability of having a prompt neutron
   double prob_prompt = xs_t->prompt_nu_fission(cache[tid].a, gin);
 
   // sample random numbers
-  double xi_pd = prn(seed) * nu_fission;
+  double xi_pd = prn(seed) * (prompt_nu_fission + delayed_nu_fission_total);
   double xi_gout = prn(seed);
 
   // Select whether the neutron is prompt or delayed
@@ -569,7 +573,7 @@ Mgxs::sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed)
 
     // get the delayed group
     for (dg = 0; dg < num_delayed_groups; ++dg) {
-      prob_prompt += xs_t->delayed_nu_fission(cache[tid].a, dg, gin);
+      prob_prompt += delayed_nu_fission[dg];
       if (xi_pd < prob_prompt) break;
     }
 

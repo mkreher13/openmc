@@ -156,7 +156,7 @@ class Mgxs {
     //! @param gout Sampled outgoing energy group.
     //! @param seed Pseudorandom seed pointer
     void
-    sample_fission_energy(int gin, int& dg, int& gout, uint64_t* seed);
+    sample_fission_energy(int gin, std::vector<double> delayed_nu_fission, int& dg, int& gout, uint64_t* seed);
 
     //! \brief Samples the outgoing energy and angle from a scatter event.
     //!
