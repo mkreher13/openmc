@@ -212,7 +212,6 @@ Particle::event_advance()
   // Adjust the weight to account for the flux frequency
   int mesh_bin = -1;
   int freq_group;
-  double freq; 
   if (settings::flux_frequency_on) {
     mesh_bin = simulation::frequency_mesh->get_bin(r());
     
@@ -245,10 +244,10 @@ Particle::event_advance()
   if (type_ == Particle::Type::electron ||
       type_ == Particle::Type::positron) {
     collision_distance_ = 0.0;
-  } else if (macro_xs_.total == 0.0) {
+  } else if (macro_xs_.total == 0.0 && freq == 0.0) {
     collision_distance_ = INFINITY;
   } else {
-    collision_distance_ = -std::log(prn(this->current_seed())) / macro_xs_.total;
+    collision_distance_ = -std::log(prn(this->current_seed())) / (macro_xs_.total + abs(freq));
   }
 
   // Select smaller of the two distances
@@ -350,7 +349,7 @@ Particle::event_collide()
     }
 
     keff_tally_collision_ += wgt_ * nu_fission
-      / macro_xs_.total;
+      / (macro_xs_.total + abs(freq));
   }
 
   // Score surface current tallies -- this has to be done before the collision

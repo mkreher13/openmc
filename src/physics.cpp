@@ -87,7 +87,6 @@ void sample_neutron_reaction(Particle& p)
   int i_nuclide = sample_nuclide(p);
   int mesh_bin = -1;
   int freq_group = -1;
-  double freq = 0.0;
 
   if (i_nuclide == 0 && settings::frequency_method_on == true) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
@@ -96,12 +95,12 @@ void sample_neutron_reaction(Particle& p)
     freq_group = settings::frequency_energy_bins.size() - freq_group;
     auto inverse_velocity = 1. / ( sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0);
     if (settings::flux_frequency_on) {
-      freq = settings::flux_frequency[freq_group] * inverse_velocity;
+      p.freq = settings::flux_frequency[freq_group] * inverse_velocity;
     }
 
     p.event_ = TallyEvent::TIME_REMOVAL;
 
-    if (freq < 0) {
+    if (p.freq < 0) {
       p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
     } else {
       p.alive_ = false;
@@ -489,7 +488,6 @@ int sample_nuclide(Particle& p)
 {
   int mesh_bin = -1;
   int freq_group = -1;
-  double freq = 0.0;
 
   // Adjust the weight to account for flux frequency
   if (settings::flux_frequency_on) {
@@ -507,22 +505,22 @@ int sample_nuclide(Particle& p)
 
     if (mesh_bin != -1 && freq_group != -1) {
       auto inverse_velocity = 1. / (sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0);
-      freq = settings::flux_frequency[freq_group] * inverse_velocity;
+      p.freq = settings::flux_frequency[freq_group] * inverse_velocity;
     } else {
-      freq = 0.0;
+      p.freq = 0.0;
     } 
   } else {
-    freq = 0.0;
+    p.freq = 0.0;
   }
   
   // Sample cumulative distribution function
-  double cutoff = prn(p.current_seed()) * p.macro_xs_.total + std::abs(freq);
+  double cutoff = prn(p.current_seed()) * p.macro_xs_.total + std::abs(p.freq);
 
   // Get pointers to nuclide/density arrays
   const auto& mat {model::materials[p.material_]};
   int n = mat->nuclide_.size();
 
-  double prob = std::abs(freq);
+  double prob = std::abs(p.freq);
   for (int i = 0; i < n; ++i) {
     // Get atom density
     int i_nuclide = mat->nuclide_[i];
@@ -1137,8 +1135,8 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
   double nu_d = 0.0;
   if (mesh_bin != -1 && nuc->fissionable_) {
     int shape_product = simulation::frequency_mesh->shape_[0] *
-	            simulation::frequency_mesh->shape_[1] *
-		    simulation::frequency_mesh->shape_[2];
+	                simulation::frequency_mesh->shape_[1] *
+		        simulation::frequency_mesh->shape_[2];
     for (int d = 1; d <= nuc->n_precursor_; ++d) {
       if (d <= settings::num_frequency_delayed_groups) {
         nu_d += nuc->nu(E_in, Nuclide::EmissionMode::delayed, d)

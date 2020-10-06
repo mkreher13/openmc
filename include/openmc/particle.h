@@ -286,6 +286,7 @@ public:
 
   // Other physical data
   double wgt_ {1.0};     //!< particle weight
+  double freq {0.0};      //!< weight adjustment for frequency transform method
   double mu_;      //!< angle of scatter
   bool alive_ {true};     //!< is particle alive?
 
