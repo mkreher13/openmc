@@ -832,6 +832,7 @@ void Material::calculate_neutron_xs(Particle& p) const
     p.macro_xs_.fission += atom_density * micro.fission;
     p.macro_xs_.nu_fission += atom_density * micro.nu_fission;
     p.macro_xs_.prompt_nu_fission += atom_density * micro.prompt_nu_fission;
+    p.macro_xs_.delayed_nu_fission.resize(micro.delayed_nu_fission.size());
     for (int d = 1; d <= micro.delayed_nu_fission.size(); ++d) {
       p.macro_xs_.delayed_nu_fission[d-1] += atom_density * micro.delayed_nu_fission[d-1];
     }
