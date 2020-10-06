@@ -15,6 +15,7 @@
 #include "openmc/mgxs_interface.h"
 #include "openmc/physics_common.h"
 #include "openmc/random_lcg.h"
+#include "openmc/search.h"
 #include "openmc/settings.h"
 #include "openmc/simulation.h"
 #include "openmc/tallies/tally.h"
@@ -43,6 +44,9 @@ sample_reaction(Particle& p)
   // it never actually "happens", i.e. the weight of the particle does not
   // change when sampling fission sites. The following block handles all
   // absorption (including fission)
+  
+  int mesh_bin = -1;
+  int freq_group = -1;
 
   if (model::materials[p.material_]->fissionable_) {
     if (settings::run_mode == RunMode::EIGENVALUE  ||
@@ -51,6 +55,50 @@ sample_reaction(Particle& p)
       create_fission_sites(p);
     }
   }
+
+  if (settings::frequency_method_on == true) {
+    mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+    if (p.E_ <= settings::frequency_energy_bins[0] || 
+        p.E_ > settings::frequency_energy_bins[
+	settings::frequency_energy_bins.size()-1]) {
+      freq_group = -1;
+      p.freq = 0.0;
+    } else {
+      freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
+		                     settings::frequency_energy_bins.end(), p.E_);
+      freq_group = settings::frequency_energy_bins.size() - freq_group;
+      if (freq_group != -1) {
+	p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
+      }
+    }
+  } else {
+    p.freq = 0.0;
+  }
+
+  // The following code uses prn() which changes the order of random numbers and
+  // will change the testing results. So I will not make this addition until the very end. 
+//  if (abs(p.freq) > prn(p.current_seed()) * (p.macro_xs_.total + abs(p.freq))) {
+//    p.event_ = TallyEvent::TIME_REMOVAL;
+//    if (p.freq < 0.0) {
+//      p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
+//    } else {
+//      p.alive_ = false;
+//      return;
+//    }
+//  } else {
+    
+//    // If survival biasing is being used, the following subrouting adjusts the
+//    // weight of the particle. Otherwise, it checks to see if absorption occurs.
+//    if (p.macro_xs_.absorption > 0.) {
+//      absorption(p);
+//    } else {
+//      p.wgt_absorb_ = 0.;
+//    }
+//    if (!p.alive_) return;
+//
+//    // Sample a scattering event to determine the energy of the exiting neutron
+//    scatter(p);
+//  }
 
   // If survival biasing is being used, the following subroutine adjusts the
   // weight of the particle. Otherwise, it checks to see if absorption occurs.
@@ -94,9 +142,52 @@ create_fission_sites(Particle& p)
   // the expected number of fission sites produced
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
+  int mesh_bin = -1;
+  int freq_group = -1;
+
+  if (settings::frequency_method_on == true) {
+    mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+    if (p.E_ <= settings::frequency_energy_bins[0] ||
+        p.E_ > settings::frequency_energy_bins[
+	settings::frequency_energy_bins.size()-1]) {
+      freq_group = -1;
+      p.freq = 0.0;
+    } else {
+      freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
+		                     settings::frequency_energy_bins.end(), p.E_);
+      freq_group = settings::frequency_energy_bins.size() - freq_group;
+      if (freq_group != -1) {
+	p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
+      }
+    }
+  } else {
+    p.freq = 0.0;
+  }
+
   // Determine the expected number of neutrons produced
   double nu_t = p.wgt_ / simulation::keff * weight *
-       p.macro_xs_.nu_fission / p.macro_xs_.total;
+       p.macro_xs_.prompt_nu_fission / (p.macro_xs_.total + abs(p.freq));
+
+  if (settings::precursor_frequency_on) {
+    mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+  }
+
+  for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
+    double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
+    double nu_delayed = p.wgt_ / simulation::keff * weight * delayed_nu_fission /
+	                (p.macro_xs_.total + abs(p.freq));
+
+    if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
+      int shape_product = simulation::frequency_mesh->shape_[0] *
+ 	                  simulation::frequency_mesh->shape_[1] *
+	 	 	  simulation::frequency_mesh->shape_[2];
+      nu_delayed = nu_delayed 
+	      	   * settings::precursor_frequency[mesh_bin+shape_product*(d-1)]; 
+      delayed_nu_fission = delayed_nu_fission 
+	                   * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+    }
+    nu_t += nu_delayed;
+  }
 
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
@@ -215,12 +306,49 @@ absorption(Particle& p)
     p.wgt_ -= p.wgt_absorb_;
     p.wgt_last_ = p.wgt_;
 
-    // Score implicit absorpion estimate of keff
-    p.keff_tally_absorption_ += p.wgt_absorb_ * p.macro_xs_.nu_fission /
+    int mesh_bin = -1;
+    double nu_fission = p.macro_xs_.prompt_nu_fission;
+    if (settings::precursor_frequency_on) {
+      mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+    }
+
+    for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
+      double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
+      if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
+	int shape_product = simulation::frequency_mesh->shape_[0] *
+	                    simulation::frequency_mesh->shape_[1] *
+			    simulation::frequency_mesh->shape_[2];
+	delayed_nu_fission = delayed_nu_fission
+		             * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+      }
+      nu_fission += delayed_nu_fission;
+    }
+
+    // Score implicit absorption estimate of keff
+    p.keff_tally_absorption_ += p.wgt_absorb_ * nu_fission /
         p.macro_xs_.absorption;
   } else {
     if (p.macro_xs_.absorption > prn(p.current_seed()) * p.macro_xs_.total) {
-      p.keff_tally_absorption_ += p.wgt_ * p.macro_xs_.nu_fission /
+
+      int mesh_bin = -1;
+      double nu_fission = p.macro_xs_.prompt_nu_fission;
+      if (settings::precursor_frequency_on) {
+	mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+      }
+
+      for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
+        double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
+	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
+          int shape_product = simulation::frequency_mesh->shape_[0] *
+		              simulation::frequency_mesh->shape_[1] *
+			      simulation::frequency_mesh->shape_[2];
+	  delayed_nu_fission = delayed_nu_fission
+		               * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+	}
+	nu_fission += delayed_nu_fission;
+      }
+
+      p.keff_tally_absorption_ += p.wgt_ * nu_fission /
            p.macro_xs_.absorption;
       p.alive_ = false;
       p.event_ = TallyEvent::ABSORB;

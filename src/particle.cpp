@@ -330,7 +330,7 @@ Particle::event_collide()
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
     
-    double mesh_bin = -1;
+    int mesh_bin = -1;
     double nu_fission = macro_xs_.prompt_nu_fission;
     if (settings::precursor_frequency_on) {
       mesh_bin = simulation::frequency_mesh->get_bin(r());
