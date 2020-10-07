@@ -1,4 +1,3 @@
-from abc import ABCMeta
 from collections import OrderedDict
 import copy
 from numbers import Integral
@@ -7,7 +6,6 @@ import warnings
 
 import h5py
 import numpy as np
-from six import string_types
 
 import openmc
 import openmc.checkvalue as cv
@@ -16,7 +14,7 @@ from . import EnergyGroups
 
 
 # Supported cross section types
-MGXS_TYPES = {
+MGXS_TYPES = (
     'total',
     'transport',
     'nu-transport',
@@ -41,7 +39,7 @@ MGXS_TYPES = {
     'prompt-nu-fission matrix',
     'current',
     'diffusion-coefficient'
-}
+)
 
 # Supported domain types
 DOMAIN_TYPES = (
@@ -494,7 +492,6 @@ class MGXS:
 
             # Create a domain Filter object
             filter_type = _DOMAIN_TO_FILTER[self.domain_type]
-        
             if self.domain_type == 'mesh':
                 domain_filter = filter_type(self.domain)
             else:
@@ -530,8 +527,6 @@ class MGXS:
                     self._tallies[key].nuclides += self.get_nuclides()
                 else:
                     self._tallies[key].nuclides.append('total')
-
-        #print(self._tallies)
 
         return self._tallies
 
@@ -2838,22 +2833,28 @@ class TransportXS(MGXS):
 
 
 class DiffusionCoefficient(TransportXS):
-    r"""A transport-corrected total multi-group cross section.
+    r"""A diffusion coefficient multi-group cross section.
+
     This class can be used for both OpenMC input generation and tally data
     post-processing to compute spatially-homogenized and energy-integrated
     multi-group cross sections for multi-group neutronics calculations. At a
-    minimum, one needs to set the :attr:`TransportXS.energy_groups` and
-    :attr:`TransportXS.domain` properties. Tallies for the flux and appropriate
+    minimum, one needs to set the :attr:`DiffusionCoefficient.energy_groups` and
+    :attr:`DiffusionCoefficient.domain` properties. Tallies for the flux and appropriate
     reaction rates over the specified domain are generated automatically via the
-    :attr:`TransportXS.tallies` property, which can then be appended to a
+    :attr:`DiffusionCoefficient.tallies` property, which can then be appended to a
     :class:`openmc.Tallies` instance.
+
     For post-processing, the :meth:`MGXS.load_from_statepoint` will pull in the
     necessary data to compute multi-group cross sections from a
     :class:`openmc.StatePoint` instance. The derived multi-group cross section
-    can then be obtained from the :attr:`TransportXS.xs_tally` property.
+    can then be obtained from the :attr:`DiffusionCoefficient.xs_tally` property.
+
     For a spatial domain :math:`V` and energy group :math:`[E_g,E_{g-1}]`, the
-    transport-corrected total cross section is calculated as:
+    diffusion coefficient is calculated as:
+
     .. math::
+
+       \begin{aligned}
        \langle \sigma_t \phi \rangle &= \int_{r \in V} dr \int_{4\pi}
        d\Omega \int_{E_g}^{E_{g-1}} dE \sigma_t (r, E) \psi
        (r, E, \Omega) \\
@@ -2865,7 +2866,10 @@ class DiffusionCoefficient(TransportXS):
        \langle \phi \rangle &= \int_{r \in V} dr \int_{4\pi} d\Omega
        \int_{E_g}^{E_{g-1}} dE \; \psi (r, E, \Omega) \\
        \sigma_{tr} &= \frac{\langle \sigma_t \phi \rangle - \langle \sigma_{s1}
-       \phi \rangle}{\langle \phi \rangle}
+       \phi \rangle}{\langle \phi \rangle} \\
+       D = \frac{1}{3 \sigma_{tr}}
+       \end{aligned}
+       
     Parameters
     ----------
     domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
@@ -2874,11 +2878,21 @@ class DiffusionCoefficient(TransportXS):
         The domain type for spatial homogenization
     groups : openmc.mgxs.EnergyGroups
         The energy group structure for energy condensation
+    nu : bool
+        If True, the cross section data will include neutron multiplication;
+        must be False in DiffusionCoefficient.
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
     name : str, optional
         Name of the multi-group cross section. Used as a label to identify
         tallies in OpenMC 'tallies.xml' file.
+    num_polar : Integral, optional
+        Number of equi-width polar angle bins for angle discretization;
+        defaults to one bin
+    num_azimuthal : Integral, optional
+        Number of equi-width azimuthal angle bins for angle discretization;
+        defaults to one bin
+
     Attributes
     ----------
     name : str, optional
@@ -2889,12 +2903,16 @@ class DiffusionCoefficient(TransportXS):
         If True, the cross section data will include neutron multiplication
     by_nuclide : bool
         If true, computes cross sections for each nuclide in domain
-    domain : Material or Cell or Universe or Mesh
+    domain : openmc.Material or openmc.Cell or openmc.Universe or openmc.RegularMesh
         Domain for spatial homogenization
     domain_type : {'material', 'cell', 'distribcell', 'universe', 'mesh'}
         Domain type for spatial homogenization
     energy_groups : openmc.mgxs.EnergyGroups
         Energy group structure for energy condensation
+    num_polar : Integral
+        Number of equi-width polar angle bins for angle discretization
+    num_azimuthal : Integral
+        Number of equi-width azimuthal angle bins for angle discretization
     tally_trigger : openmc.Trigger
         An (optional) tally precision trigger given to each tally used to
         compute the cross section
@@ -2940,6 +2958,7 @@ class DiffusionCoefficient(TransportXS):
         Whether or not the MGXS is merged from one or more other MGXS
     hdf5_key : str
         The key used to index multi-group cross sections in an HDF5 data store
+
     """
 
     def __init__(self, domain=None, domain_type=None, groups=None, nu=False,
@@ -2961,8 +2980,8 @@ class DiffusionCoefficient(TransportXS):
 
             # Slice Legendre expansion filter and change name of score
             p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                    filter_bins=[('P1',)],
-                    squeeze=True)
+                                          filter_bins=[('P1',)],
+                                          squeeze=True)
             p1_tally._scores = ['scatter-1']
 
             # Compute total cross section
@@ -2993,12 +3012,13 @@ class DiffusionCoefficient(TransportXS):
 
         return self._xs_tally
 
-    def get_condensed_xs(self, coarse_groups, condense_dif_coef=True):
+    def get_condensed_xs(self, coarse_groups):
         """Construct an energy-condensed version of this cross section.
         Parameters
         ----------
         coarse_groups : openmc.mgxs.EnergyGroups
             The coarse energy group structure of interest
+
         Returns
         -------
         MGXS
@@ -3016,39 +3036,36 @@ class DiffusionCoefficient(TransportXS):
         # Clone this MGXS to initialize the condensed version
         condensed_xs = copy.deepcopy(self)
 
-        if condense_dif_coef:
-            if self._rxn_rate_tally is None:
+        if self._rxn_rate_tally is None:
 
-                p1_tally = self.tallies['scatter-1']
-                old_filt = p1_tally.filters[-2]
-                new_filt = openmc.EnergyFilter(old_filt.values)
-                p1_tally.filters[-2] = new_filt
+            p1_tally = self.tallies['scatter-1']
+            old_filt = p1_tally.filters[-2]
+            new_filt = openmc.EnergyFilter(old_filt.values)
+            p1_tally.filters[-2] = new_filt
 
-                # Slice Legendre expansion filter and change name of score
-                p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
-                        filter_bins=[('P1',)],
-                        squeeze=True)
-                p1_tally._scores = ['scatter-1']
-
+            # Slice Legendre expansion filter and change name of score
+            p1_tally = p1_tally.get_slice(filters=[openmc.LegendreFilter],
+                    filter_bins=[('P1',)],
+                    squeeze=True)
+            p1_tally._scores = ['scatter-1']
+            
             total = self.tallies['total'] / self.tallies['flux (tracklength)']
             trans_corr = p1_tally / self.tallies['flux (analog)']
             transport = (total - trans_corr)
             dif_coef = transport**(-1) / 3.0
             dif_coef *= self.tallies['flux (tracklength)']
-            flux_tally = condensed_xs.tallies['flux (tracklength)']
-            condensed_xs._tallies = OrderedDict()
-            condensed_xs._tallies[self._rxn_type] = dif_coef
-            condensed_xs._tallies['flux (tracklength)'] = flux_tally
-            condensed_xs._rxn_rate_tally = dif_coef
-            condensed_xs._xs_tally = None
-            condensed_xs._sparse = False
-            condensed_xs._energy_groups = coarse_groups
 
         else:
-            condensed_xs._rxn_rate_tally = None
-            condensed_xs._xs_tally = None
-            condensed_xs._sparse = False
-            condensed_xs._energy_groups = coarse_groups
+            dif_coef = self.rxn_rate_tally
+            
+        flux_tally = condensed_xs.tallies['flux (tracklength)']
+        condensed_xs._tallies = OrderedDict()
+        condensed_xs._tallies[self._rxn_type] = dif_coef
+        condensed_xs._tallies['flux (tracklength)'] = flux_tally
+        condensed_xs._rxn_rate_tally = dif_coef
+        condensed_xs._xs_tally = None
+        condensed_xs._sparse = False
+        condensed_xs._energy_groups = coarse_groups
 
         # Build energy indices to sum across
         energy_indices = []

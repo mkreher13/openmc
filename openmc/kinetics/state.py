@@ -131,7 +131,6 @@ class State(object):
 
         self._log_file = None
         self._multi_group = True
-        self._condense_dif_coef = True
         self._use_agd = False
         self._use_pcmfd = False
         self.states = states
@@ -219,10 +218,6 @@ class State(object):
     def multi_group(self):
         return self._multi_group
 
-    @property
-    def condense_dif_coef(self):
-        return self._condense_dif_coef
-
     @states.setter
     def states(self, states):
         self._states = states
@@ -305,10 +300,6 @@ class State(object):
     @multi_group.setter
     def multi_group(self, multi_group):
         self._multi_group = multi_group
-
-    @condense_dif_coef.setter
-    def condense_dif_coef(self, condense):
-        self._condense_dif_coef = condense
 
     @property
     def shape_dimension(self):
@@ -836,7 +827,7 @@ class OuterState(State):
     def diffusion_coefficient(self):
         if not self.mgxs_loaded:
             dif_coef = self.mgxs_lib['diffusion-coefficient']\
-                .get_condensed_xs(self.energy_groups, self.condense_dif_coef)
+                .get_condensed_xs(self.energy_groups)
             flux = dif_coef.tallies['flux (tracklength)'].get_values()
             dif_coef = dif_coef.get_xs()
             dif_coef.shape = self.tally_zyxg

@@ -176,7 +176,6 @@ class Solver(object):
         self._inner_tolerance = 1.e-6
         self._outer_tolerance = 1.e-6
         self._method = 'ADIABATIC'
-        self._condense_dif_coef = True
         self._use_agd = False
         self._use_pcmfd = False
         self._min_outer_iters = 2
@@ -260,10 +259,6 @@ class Solver(object):
     @property
     def chi_delayed_by_delayed_group(self):
         return self._chi_delayed_by_delayed_group
-
-    @property
-    def condense_dif_coef(self):
-        return self._condense_dif_coef
 
     @property
     def use_agd(self):
@@ -430,10 +425,6 @@ class Solver(object):
     def chi_delayed_by_mesh(self, chi_delayed_by_mesh):
         self._chi_delayed_by_mesh = chi_delayed_by_mesh
 
-    @condense_dif_coef.setter
-    def condense_dif_coef(self, condense):
-        self._condense_dif_coef = condense
-
     @use_agd.setter
     def use_agd(self, use_agd):
         self._use_agd = use_agd
@@ -539,7 +530,6 @@ class Solver(object):
         f.attrs['chi_delayed_by_delayed_group'] \
             = self.chi_delayed_by_delayed_group
         f.attrs['chi_delayed_by_mesh'] = self.chi_delayed_by_mesh
-        f.attrs['condense_dif_coef'] = self.condense_dif_coef
         f.attrs['use_agd'] = self.use_agd
         f.attrs['use_pcmfd'] = self.use_pcmfd
         f.attrs['num_delayed_groups'] = self.num_delayed_groups
@@ -657,7 +647,6 @@ class Solver(object):
         state.fine_groups = self.fine_groups
         state.one_group = self.one_group
         state.num_delayed_groups = self.num_delayed_groups
-        state.condense_dif_coef = self.condense_dif_coef
         state.use_agd = self.use_agd
         state.use_pcmfd = self.use_pcmfd
         state.time_point = time_point
