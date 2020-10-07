@@ -63,47 +63,33 @@ sample_reaction(Particle& p)
 		                     settings::frequency_energy_bins.end(), p.E_);
       freq_group = settings::frequency_energy_bins.size() - freq_group;
       p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
-      }
+    }
   } else {
     p.freq = 0.0;
   }
 
-  // The following code uses prn() which changes the order of random numbers and
-  // will change the testing results. So I will not make this addition until the very end. 
-//  if (abs(p.freq) > prn(p.current_seed()) * (p.macro_xs_.total + abs(p.freq))) {
-//    p.event_ = TallyEvent::TIME_REMOVAL;
-//    if (p.freq < 0.0) {
-//      p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
-//    } else {
-//      p.alive_ = false;
-//      return;
-//    }
-//  } else {
-    
-//    // If survival biasing is being used, the following subrouting adjusts the
-//    // weight of the particle. Otherwise, it checks to see if absorption occurs.
-//    if (p.macro_xs_.absorption > 0.) {
-//      absorption(p);
-//    } else {
-//      p.wgt_absorb_ = 0.;
-//    }
-//    if (!p.alive_) return;
-//
-//    // Sample a scattering event to determine the energy of the exiting neutron
-//    scatter(p);
-//  }
-
-  // If survival biasing is being used, the following subroutine adjusts the
-  // weight of the particle. Otherwise, it checks to see if absorption occurs.
-  if (p.macro_xs_.absorption > 0.) {
-    absorption(p);
+  if (abs(p.freq) > prn(p.current_seed()) * (p.macro_xs_.total + abs(p.freq))) {
+    p.event_ = TallyEvent::TIME_REMOVAL;
+    if (p.freq < 0.0) {
+      p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
+    } else {
+      p.alive_ = false;
+      return;
+    }
   } else {
-    p.wgt_absorb_ = 0.;
-  }
-  if (!p.alive_) return;
+    
+    // If survival biasing is being used, the following subroutine adjusts the
+    // weight of the particle. Otherwise, it checks to see if absorption occurs.
+    if (p.macro_xs_.absorption > 0.) {
+      absorption(p);
+    } else {
+      p.wgt_absorb_ = 0.;
+    }
+    if (!p.alive_) return;
 
-  // Sample a scattering event to determine the energy of the exiting neutron
-  scatter(p);
+    // Sample a scattering event to determine the energy of the exiting neutron
+    scatter(p);
+  }
 
   // Play Russian roulette if survival biasing is turned on
   if (settings::survival_biasing) {
@@ -177,7 +163,7 @@ create_fission_sites(Particle& p)
     }
     nu_t += nu_delayed;
   }
-
+  
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
   if (prn(p.current_seed()) <= (nu_t - int(nu_t))) {
