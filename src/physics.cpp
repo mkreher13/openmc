@@ -483,17 +483,25 @@ int sample_nuclide(Particle& p)
 {
   // Adjust the weight to account for flux frequency
   if (settings::flux_frequency_on) {
+    int mesh_bin = -1;
+    int freq_group = -1;
+    mesh_bin = simulation::frequency_mesh->get_bin(p.r());
 
     if (p.E_ <= settings::frequency_energy_bins[0] || 
         p.E_ > settings::frequency_energy_bins[
 	settings::frequency_energy_bins.size()-1]) {
-      p.freq = 0.0;
+      freq_group = -1;
     } else {
       int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
 		      settings::frequency_energy_bins.end(), p.E_);
       freq_group = settings::frequency_energy_bins.size() - freq_group;
+    }
+
+    if (mesh_bin != -1 && freq_group != -1) {
       auto inverse_velocity = 1. / (sqrt(2*p.E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0);
       p.freq = settings::flux_frequency[freq_group] * inverse_velocity;
+    } else {
+      p.freq = 0.0;
     }
   } else {
     p.freq = 0.0;
