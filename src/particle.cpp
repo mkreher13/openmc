@@ -225,7 +225,7 @@ Particle::event_advance()
 	double velocity = sqrt(2*E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0;
 	freq = settings::flux_frequency[freq_group] / velocity;
       } else {
-	freq = settings::flux_frequency[freq_group] / macro_xs_.inverse_velocity;
+	freq = settings::flux_frequency[freq_group] * macro_xs_.inverse_velocity;
       }
     }
   } else {

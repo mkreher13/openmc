@@ -95,7 +95,7 @@ void sample_neutron_reaction(Particle& p)
 
     p.event_ = TallyEvent::TIME_REMOVAL;
 
-    if (p.freq < 0) {
+    if (p.freq < 0.0) {
       p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
     } else {
       p.alive_ = false;
@@ -500,13 +500,14 @@ int sample_nuclide(Particle& p)
   }
   
   // Sample cumulative distribution function
-  double cutoff = prn(p.current_seed()) * p.macro_xs_.total + std::abs(p.freq);
+  double cutoff = prn(p.current_seed()) * (p.macro_xs_.total + abs(p.freq));
 
   // Get pointers to nuclide/density arrays
   const auto& mat {model::materials[p.material_]};
   int n = mat->nuclide_.size();
 
-  double prob = std::abs(p.freq);
+  double prob = abs(p.freq);
+  
   for (int i = 0; i < n; ++i) {
     // Get atom density
     int i_nuclide = mat->nuclide_[i];
