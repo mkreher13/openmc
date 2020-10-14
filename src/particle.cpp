@@ -220,7 +220,7 @@ Particle::event_advance()
     } else {
       int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
 		      settings::frequency_energy_bins.end(), E_);
-      freq_group = settings::frequency_energy_bins.size() - freq_group;
+      freq_group = settings::frequency_energy_bins.size() - 2 - freq_group;
       if (settings::run_CE) {
 	double velocity = sqrt(2*E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0;
 	freq = settings::flux_frequency[freq_group] / velocity;

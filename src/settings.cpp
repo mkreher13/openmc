@@ -623,17 +623,8 @@ void read_settings_xml()
 
       // Check for precursor frequency
       if (check_for_node(node_frequency, "precursor_frequency")) {
-	//double[][] precursor_f = new double[shape_product][num_f_delayed_groups];
-//	std::vector<double> precursor_f[shape_product][num_f_delayed_groups];
-	//std::vector<double> temp = get_node_array<double>(node_frequency, "precursor_frequency");
 	settings::precursor_frequency = get_node_array<double>(node_frequency, "precursor_frequency");
-	//for (int i = 0; i < num_f_delayed_groups; ++i) {
-        //  for (int j = 0; j < shape_product; ++j) {
-        //    precursor_f[i][j] = temp[j+shape_product*i];
-	//  }
-	//}
 	settings::precursor_frequency_on = true;
-	//settings::precursor_frequency = precursor_f;
 	settings::num_frequency_delayed_groups = num_f_delayed_groups;
       }
     }

@@ -61,7 +61,7 @@ sample_reaction(Particle& p)
     } else {
       int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
 		                     settings::frequency_energy_bins.end(), p.E_);
-      freq_group = settings::frequency_energy_bins.size() - freq_group;
+      freq_group = settings::frequency_energy_bins.size() - 2 - freq_group;
       p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
     }
   } else {
@@ -132,7 +132,7 @@ create_fission_sites(Particle& p)
     } else {
       int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
 		                     settings::frequency_energy_bins.end(), p.E_);
-      freq_group = settings::frequency_energy_bins.size() - freq_group;
+      freq_group = settings::frequency_energy_bins.size() - 2 - freq_group;
       p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
     }
   } else {
