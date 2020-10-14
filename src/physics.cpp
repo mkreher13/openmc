@@ -86,7 +86,7 @@ void sample_neutron_reaction(Particle& p)
   // Sample a nuclide within the material
   int i_nuclide = sample_nuclide(p);
 
-  if (i_nuclide == 0 && settings::flux_frequency_on) {
+  if (i_nuclide == -1 && settings::flux_frequency_on) {
     p.event_ = TallyEvent::TIME_REMOVAL;
 
     if (p.freq < 0.0) {
@@ -508,6 +508,8 @@ int sample_nuclide(Particle& p)
   int n = mat->nuclide_.size();
 
   double prob = abs(p.freq);
+  int i_nuclide = -1;
+  if (prob >= cutoff) return i_nuclide;
   
   for (int i = 0; i < n; ++i) {
     // Get atom density
