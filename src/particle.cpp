@@ -476,7 +476,7 @@ Particle::cross_surface()
   // TODO: off-by-one
   const auto& surf {model::surfaces[i_surface - 1].get()};
   if (settings::verbosity >= 10 || trace_) {
-    write_message("    Crossing surface {}", surf->id_);
+    write_message(1, "    Crossing surface {}", surf->id_);
   }
 
   if (surf->bc_ == Surface::BoundaryType::VACUUM && (settings::run_mode != RunMode::PLOTTING)) {
@@ -503,7 +503,7 @@ Particle::cross_surface()
 
     // Display message
     if (settings::verbosity >= 10 || trace_) {
-      write_message("    Leaked out of surface {}", surf->id_);
+      write_message(1, "    Leaked out of surface {}", surf->id_);
     }
     return;
 
@@ -568,7 +568,7 @@ Particle::cross_surface()
 
     // Diagnostic message
     if (settings::verbosity >= 10 || trace_) {
-      write_message("    Reflected from surface {}", surf->id_);
+      write_message(1, "    Reflected from surface {}", surf->id_);
     }
     return;
 
@@ -622,7 +622,7 @@ Particle::cross_surface()
 
     // Diagnostic message
     if (settings::verbosity >= 10 || trace_) {
-      write_message("    Hit periodic boundary on surface {}", surf->id_);
+      write_message(1, "    Hit periodic boundary on surface {}", surf->id_);
     }
     return;
   }
