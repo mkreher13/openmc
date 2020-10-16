@@ -53,21 +53,6 @@ sample_reaction(Particle& p)
     }
   }
 
-  if (settings::flux_frequency_on) {
-    if (p.E_ <= settings::frequency_energy_bins[0] || 
-        p.E_ > settings::frequency_energy_bins[
-	settings::frequency_energy_bins.size()-1]) {
-      p.freq = 0.0;
-    } else {
-      int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
-		                     settings::frequency_energy_bins.end(), p.E_);
-      freq_group = settings::frequency_energy_bins.size() - 2 - freq_group;
-      p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
-    }
-  } else {
-    p.freq = 0.0;
-  }
-
   if (abs(p.freq) > prn(p.current_seed()) * (p.macro_xs_.total + abs(p.freq))) {
     p.event_ = TallyEvent::TIME_REMOVAL;
     if (p.freq < 0.0) {
@@ -123,21 +108,6 @@ create_fission_sites(Particle& p)
 
   int mesh_bin = -1;
   std::vector<double> delayed_nu_fission(p.macro_xs_.delayed_nu_fission.size());
-
-  if (settings::flux_frequency_on) {
-    if (p.E_ <= settings::frequency_energy_bins[0] ||
-        p.E_ > settings::frequency_energy_bins[
-	settings::frequency_energy_bins.size()-1]) {
-      p.freq = 0.0;
-    } else {
-      int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
-		                     settings::frequency_energy_bins.end(), p.E_);
-      freq_group = settings::frequency_energy_bins.size() - 2 - freq_group;
-      p.freq = settings::flux_frequency[freq_group] * p.macro_xs_.inverse_velocity;
-    }
-  } else {
-    p.freq = 0.0;
-  }
 
   // Determine the expected number of neutrons produced
   double nu_t = p.wgt_ / simulation::keff * weight *
