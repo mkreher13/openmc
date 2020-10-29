@@ -293,8 +293,6 @@ openmc_statepoint_write(const char* filename, bool* write_source)
       write_dataset(runtime_group, "synchronizing fission bank", time_bank.elapsed());
       write_dataset(runtime_group, "sampling source sites", time_bank_sample.elapsed());
       write_dataset(runtime_group, "SEND-RECV source sites", time_bank_sendrecv.elapsed());
-    } else {
-      write_dataset(runtime_group, "sampling source sites", time_sample_source.elapsed());
     }
     write_dataset(runtime_group, "accumulating tallies", time_tallies.elapsed());
     write_dataset(runtime_group, "total", time_total.elapsed());
@@ -508,6 +506,12 @@ hid_t h5banktype() {
   H5Tinsert(postype, "z", HOFFSET(Position, z), H5T_NATIVE_DOUBLE);
 
   // Create bank datatype
+  //
+  // If you make changes to the compound datatype here, make sure you update:
+  // - openmc/source.py
+  // - openmc/statepoint.py
+  // - docs/source/io_formats/statepoint.rst
+  // - docs/source/io_formats/source.rst
   hid_t banktype = H5Tcreate(H5T_COMPOUND, sizeof(struct Particle::Bank));
   H5Tinsert(banktype, "r", HOFFSET(Particle::Bank, r), postype);
   H5Tinsert(banktype, "u", HOFFSET(Particle::Bank, u), postype);
