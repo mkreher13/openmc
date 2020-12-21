@@ -216,30 +216,30 @@ Particle::event_advance()
     if (E_ <= settings::frequency_energy_bins[0] || 
         E_ > settings::frequency_energy_bins[
 	     settings::frequency_energy_bins.size()-1]) {
-      freq = 0.0;
+      freq_ = 0.0;
     } else {
       int freq_group = lower_bound_index(settings::frequency_energy_bins.begin(),
 		      settings::frequency_energy_bins.end(), E_);
       freq_group = settings::frequency_energy_bins.size() - 2 - freq_group;
       if (settings::run_CE) {
 	double velocity = sqrt(2*E_ / MASS_NEUTRON_EV) * C_LIGHT * 100.0;
-	freq = settings::flux_frequency[freq_group] / velocity;
+	freq_ = settings::flux_frequency[freq_group] / velocity;
       } else {
-	freq = settings::flux_frequency[freq_group] * macro_xs_.inverse_velocity;
+	freq_ = settings::flux_frequency[freq_group] * macro_xs_.inverse_velocity;
       }
     }
   } else {
-    freq = 0.0;
+    freq_ = 0.0;
   }
 
   // Sample a distance to collision
   if (type_ == Particle::Type::electron ||
       type_ == Particle::Type::positron) {
     collision_distance_ = 0.0;
-  } else if (macro_xs_.total == 0.0 && freq == 0.0) {
+  } else if (macro_xs_.total == 0.0 && freq_ == 0.0) {
     collision_distance_ = INFINITY;
   } else {
-    collision_distance_ = -std::log(prn(this->current_seed())) / (macro_xs_.total + abs(freq));
+    collision_distance_ = -std::log(prn(this->current_seed())) / (macro_xs_.total + abs(freq_));
   }
 
   // Select smaller of the two distances
@@ -341,7 +341,7 @@ Particle::event_collide()
     }
 
     keff_tally_collision_ += wgt_ * nu_fission
-      / (macro_xs_.total + abs(freq));
+      / (macro_xs_.total + abs(freq_));
   }
 
   // Score surface current tallies -- this has to be done before the collision

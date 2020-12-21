@@ -640,7 +640,6 @@ Mgxs::calculate_xs(Particle& p)
     fissionable ? xs_t->nu_fission(cache[tid].a, p.g_) : 0.;
   p.macro_xs_.prompt_nu_fission =
     fissionable ? xs_t->prompt_nu_fission(cache[tid].a, p.g_) : 0.;
-  p.macro_xs_.delayed_nu_fission.resize(num_delayed_groups);
   if (p.macro_xs_.delayed_nu_fission.size() > 0) {
     for (int dg = 0; dg <= p.macro_xs_.delayed_nu_fission.size(); ++dg) {
       p.macro_xs_.delayed_nu_fission[dg] =
