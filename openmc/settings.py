@@ -1009,21 +1009,13 @@ class Settings:
         if self._frequency_mesh is not None:
             element = ET.SubElement(root, "frequency")
 
-            if self._frequency_mesh.dimension is not None:
-                subelement = ET.SubElement(element, "dimension")
-                subelement.text = ' '.join(
-                        str(x) for x in self._frequency_mesh.dimension)
-            subelement = ET.SubElement(element, "lower_left")
-            subelement.text = ' '.join(
-                    str(x) for x in self._frequency_mesh.lower_left)
-            if self._frequency_mesh.upper_right is not None:
-                subelement = ET.SubElement(element, "upper_right")
-                subelement.text = ' '.join(
-                        str(x) for x in self._frequency_mesh.upper_right)
-            if self._frequency_mesh.width is not None:
-                subelement = ET.SubElement(element, "width")
-                subelement.text = ' '.join(
-                        str(x) for x in self._frequency_mesh.width)
+            # See if a <mesh> element already exists -- if not, add it
+            path = "./mesh[@id='{}']".format(self._frequency_mesh.id)
+            if root.find(path) is None:
+                root.append(self._frequency_mesh.to_xml_element())
+
+            subelement = ET.SubElement(element, "frequency_mesh")
+            subelement.text = str(self._frequency_mesh.id)
 
             if self._frequency_group_structure is not None:
                 subelement = ET.SubElement(element, "group_structure")
@@ -1033,8 +1025,7 @@ class Settings:
             if self._frequency_num_delayed_groups is not None:
                 subelement = ET.SubElement(element, "delayed_groups")
                 subelement.text = str(self._frequency_num_delayed_groups)
-            #Note: Sam commented out flux_frequency settings in his code
-            #Should it stay here or be put back into solver.py?
+
             if self._flux_frequency is not None:
                 subelement = ET.SubElement(element, "flux_frequency")
                 subelement.text = ' '.join(

@@ -862,7 +862,12 @@ class Solver(object):
 
     def create_frequency_mesh(self):
 
-        self.settings_file.frequency_mesh = self.shape_mesh
+        frequency_mesh_ = openmc.RegularMesh()
+        frequency_mesh_.dimension = self.shape_mesh.dimension
+        frequency_mesh_.lower_left = self.shape_mesh.lower_left
+        frequency_mesh_.width = self.shape_mesh.width
+
+        self.settings_file.frequency_mesh = frequency_mesh_
         self.settings_file.frequency_group_structure = self.energy_groups
         self.settings_file.frequency_num_delayed_groups = self.num_delayed_groups
 

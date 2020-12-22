@@ -561,37 +561,20 @@ void read_settings_xml()
 
     // Read the frequency mesh from <frequency>
     auto node_frequency = root.child("frequency");
-    model::meshes.push_back(std::make_unique<RegularMesh>(node_frequency));
+    if (check_for_node(node_frequency, "frequency_mesh")) {
+      int temp = std::stoi(get_node_value(node_frequency, "frequency_mesh"));
+      if (model::mesh_map.find(temp) == model::mesh_map.end()) {
+        fatal_error(fmt::format(
+	  "Mesh {} specified for frequency mesh does not exist.", temp));
+      }
 
-    // Set frequency mesh index
-    index_frequency_mesh = model::meshes.size() - 1;
-
-    // Assign ID and set mapping
-    model::meshes.back()->id_ = 10001;
-    model::mesh_map[10000] = index_frequency_mesh;
-  }
-
-  if (index_frequency_mesh >= 0) {
-    auto* m = dynamic_cast<RegularMesh*>(
-      model::meshes[index_frequency_mesh].get());
-    if (!m) fatal_error("Only regular meshes can be used as a frequency mesh");
-    simulation::frequency_mesh = m;
-    int shape_product = m->shape_[0] * m->shape_[1] * m->shape_[2];
-
-    if (m->shape_.size() == 0) {
-      // If the user did not specify how many mesh cells are to be used in
-      // each direction, we automatically determine an appropriate number of
-      // cells
-      int n = std::ceil(std::pow(n_particles / 20.0, 1.0/3.0));
-      m->shape_ = {n, n, n};
-      m->n_dimension_ = 3;
-
-      // Calculate width
-      m-> width_ = (m->upper_right_ - m->lower_left_) / m->shape_;
+      auto*m = dynamic_cast<RegularMesh*>(
+       model::meshes[model::mesh_map.at(temp)].get());
+      if (!m) fatal_error("Only regular meshes can be used as a frequency mesh");
+      simulation::frequency_mesh = m;
     }
 
     // Check for group structure
-    auto node_frequency = root.child("frequency");
     if (check_for_node(node_frequency, "group_structure")) {
       auto f_energy_bins = get_node_array<double>(node_frequency, "group_structure");
       num_frequency_energy_groups = f_energy_bins.size() - 1;
