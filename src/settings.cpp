@@ -568,7 +568,7 @@ void read_settings_xml()
 	  "Mesh {} specified for frequency mesh does not exist.", temp));
       }
 
-      auto*m = dynamic_cast<RegularMesh*>(
+      auto* m = dynamic_cast<RegularMesh*>(
        model::meshes[model::mesh_map.at(temp)].get());
       if (!m) fatal_error("Only regular meshes can be used as a frequency mesh");
       simulation::frequency_mesh = m;
