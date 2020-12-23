@@ -295,17 +295,6 @@ absorption(Particle& p)
 		p.macro_xs_.absorption;
       }
 
-//      for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
-//        double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
-//	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-//	  delayed_nu_fission = delayed_nu_fission
-//		               * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
-//	}
-//	nu_fission += delayed_nu_fission;
-//      }
-
- //     p.keff_tally_absorption_ += p.wgt_ * nu_fission /
-//           p.macro_xs_.absorption;
       p.alive_ = false;
       p.event_ = TallyEvent::ABSORB;
     }
