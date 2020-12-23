@@ -165,6 +165,7 @@ void
 create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 {
   int mesh_bin = -1;
+  int n_bins;
   const auto& nuc {data::nuclides[i_nuclide]};
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
@@ -176,17 +177,15 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 
   if (settings::precursor_frequency_on) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+    n_bins = simulation::frequency_mesh->n_bins();
   }
 
   for (int d = 1; d <= nuc->n_precursor_; ++d) {
     double nu_delayed = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
       i_nuclide].delayed_nu_fission[d-1] / p.neutron_xs_[i_nuclide].total;
     if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-      int shape_product = simulation::frequency_mesh->shape_[0] *
-	                  simulation::frequency_mesh->shape_[1] *
-			  simulation::frequency_mesh->shape_[2];
       nu_delayed = nu_delayed
-	                   * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+	                   * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
     }
     nu_t += nu_delayed; 
   }
@@ -654,6 +653,7 @@ void sample_photon_product(int i_nuclide, Particle& p, int* i_rx, int* i_product
 void absorption(Particle& p, int i_nuclide)
 {
   int mesh_bin = -1;
+  int n_bins;
   const auto& nuc {data::nuclides[i_nuclide]};
 
   if (settings::survival_biasing) {
@@ -671,16 +671,14 @@ void absorption(Particle& p, int i_nuclide)
       double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
       if (settings::precursor_frequency_on) {
         mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+	n_bins = simulation::frequency_mesh->n_bins();
       }
    
       for (int d = 1; d <= nuc->n_precursor_; ++d) {
         double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d-1];
 	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-          int shape_product = simulation::frequency_mesh->shape_[0] *
-		              simulation::frequency_mesh->shape_[1] *
-		              simulation::frequency_mesh->shape_[2];
 	  delayed_nu_fission = delayed_nu_fission
-		               * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+		               * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
 	}
 	nu_fission += delayed_nu_fission;
       }
@@ -697,16 +695,14 @@ void absorption(Particle& p, int i_nuclide)
 	double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
 	if (settings::precursor_frequency_on) {
 	  mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+	  n_bins = simulation::frequency_mesh->n_bins();
 	}
 
 	for (int d = 1; d <= nuc->n_precursor_; ++d) {
           double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d-1];
           if (mesh_bin !=-1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-	    int shape_product = simulation::frequency_mesh->shape_[0] *
-		                simulation::frequency_mesh->shape_[1] *
-	                        simulation::frequency_mesh->shape_[2];
 	    delayed_nu_fission = delayed_nu_fission 
-		                * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+		                * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
 	  }
 	  nu_fission += delayed_nu_fission;
 	}
@@ -1106,6 +1102,7 @@ sample_cxs_target_velocity(double awr, double E, Direction u, double kT, uint64_
 void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Particle::Bank* site, uint64_t* seed)
 {
   int mesh_bin = -1;
+  int n_bins;
   const auto& nuc {data::nuclides[i_nuclide]};
   // Sample cosine of angle -- fission neutrons are always emitted
   // isotropically. Sometimes in ACE data, fission reactions actually have
@@ -1121,16 +1118,14 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
 
   if (settings::precursor_frequency_on) {
     mesh_bin = simulation::frequency_mesh->get_bin(site->r);
+    n_bins = simulation::frequency_mesh->n_bins();
   }
   double nu_d = 0.0;
   if (mesh_bin != -1 && nuc->fissionable_) {
-    int shape_product = simulation::frequency_mesh->shape_[0] *
-	                simulation::frequency_mesh->shape_[1] *
-		        simulation::frequency_mesh->shape_[2];
     for (int d = 1; d <= nuc->n_precursor_; ++d) {
       if (d <= settings::num_frequency_delayed_groups) {
         nu_d += nuc->nu(E_in, Nuclide::EmissionMode::delayed, d)
-		* settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+		* settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
       }
     }
   } else {
@@ -1155,11 +1150,9 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
 
       if (settings::precursor_frequency_on) {
         mesh_bin = simulation::frequency_mesh->get_bin(site->r);
+	n_bins = simulation::frequency_mesh->n_bins();
         if (mesh_bin != -1 && group <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-	  double shape_product = simulation::frequency_mesh->shape_[0] *
-		                 simulation::frequency_mesh->shape_[1] *
-				 simulation::frequency_mesh->shape_[2];
-          yield = yield * settings::precursor_frequency[mesh_bin+shape_product*(group-1)];
+          yield = yield * settings::precursor_frequency[mesh_bin+n_bins*(group-1)];
 	}
       }
 
