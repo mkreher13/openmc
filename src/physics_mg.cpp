@@ -53,9 +53,9 @@ sample_reaction(Particle& p)
     }
   }
 
-  if (abs(p.freq) > prn(p.current_seed()) * (p.macro_xs_.total + abs(p.freq))) {
+  if (abs(p.freq_) > prn(p.current_seed()) * (p.macro_xs_.total + abs(p.freq_))) {
     p.event_ = TallyEvent::TIME_REMOVAL;
-    if (p.freq < 0.0) {
+    if (p.freq_ < 0.0) {
       p.create_secondary(p.wgt_, p.u(), p.E_, Particle::Type::neutron);
     } else {
       p.alive_ = false;
@@ -111,7 +111,7 @@ create_fission_sites(Particle& p)
 
   // Determine the expected number of neutrons produced
   double nu_t = p.wgt_ / simulation::keff * weight *
-       p.macro_xs_.prompt_nu_fission / (p.macro_xs_.total + abs(p.freq));
+       p.macro_xs_.prompt_nu_fission / (p.macro_xs_.total + abs(p.freq_));
 
   if (settings::precursor_frequency_on) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
@@ -120,7 +120,7 @@ create_fission_sites(Particle& p)
   for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
     delayed_nu_fission[d-1] = p.macro_xs_.delayed_nu_fission[d-1];
     double nu_delayed = p.wgt_ / simulation::keff * weight * delayed_nu_fission[d-1] /
-	                (p.macro_xs_.total + abs(p.freq));
+	                (p.macro_xs_.total + abs(p.freq_));
 
     if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
       int shape_product = simulation::frequency_mesh->shape_[0] *
