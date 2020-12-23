@@ -678,7 +678,7 @@ void absorption(Particle& p, int i_nuclide)
 	}
 	p.keff_tally_absorption_ += p.wgt_absorb_ * nu_fission / p.neutron_xs_[i_nuclide].absorption;
       } else {
-	p.keff_tally_absorption_ += p.wgt_ * p.neutron_xs_[
+	p.keff_tally_absorption_ += p.wgt_absorb_ * p.neutron_xs_[
 	  i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
       }	
     }	
@@ -703,7 +703,7 @@ void absorption(Particle& p, int i_nuclide)
 	  }
 	  p.keff_tally_absorption_ += p.wgt_ * nu_fission / p.neutron_xs_[i_nuclide].absorption;
 	} else {
-	  p.keff_tally_absorption_ += p.wgt_absorb_ * p.neutron_xs_[
+	  p.keff_tally_absorption_ += p.wgt_ * p.neutron_xs_[
 	    i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
 	}
       }
