@@ -107,6 +107,7 @@ create_fission_sites(Particle& p)
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   int mesh_bin = -1;
+  int n_bins;
   std::vector<double> delayed_nu_fission(p.macro_xs_.delayed_nu_fission.size());
 
   // Determine the expected number of neutrons produced
@@ -115,6 +116,7 @@ create_fission_sites(Particle& p)
 
   if (settings::precursor_frequency_on) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+    n_bins = simulation::frequency_mesh->n_bins();
   }
 
   for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
@@ -123,13 +125,10 @@ create_fission_sites(Particle& p)
 	                (p.macro_xs_.total + abs(p.freq_));
 
     if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-      int shape_product = simulation::frequency_mesh->shape_[0] *
- 	                  simulation::frequency_mesh->shape_[1] *
-	 	 	  simulation::frequency_mesh->shape_[2];
       nu_delayed = nu_delayed 
-	      	   * settings::precursor_frequency[mesh_bin+shape_product*(d-1)]; 
+	      	   * settings::precursor_frequency[mesh_bin+n_bins*(d-1)]; 
       delayed_nu_fission[d-1] = delayed_nu_fission[d-1] 
-	                   * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+	                   * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
     }
     nu_t += nu_delayed;
   }
@@ -252,19 +251,18 @@ absorption(Particle& p)
     p.wgt_last_ = p.wgt_;
 
     int mesh_bin = -1;
+    int n_bins;
     double nu_fission = p.macro_xs_.prompt_nu_fission;
     if (settings::precursor_frequency_on) {
       mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+      n_bins = simulation::frequency_mesh->n_bins();
     }
 
     for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
       double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
       if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-	int shape_product = simulation::frequency_mesh->shape_[0] *
-	                    simulation::frequency_mesh->shape_[1] *
-			    simulation::frequency_mesh->shape_[2];
 	delayed_nu_fission = delayed_nu_fission
-		             * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+		             * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
       }
       nu_fission += delayed_nu_fission;
     }
@@ -276,19 +274,18 @@ absorption(Particle& p)
     if (p.macro_xs_.absorption > prn(p.current_seed()) * p.macro_xs_.total) {
 
       int mesh_bin = -1;
+      int n_bins;
       double nu_fission = p.macro_xs_.prompt_nu_fission;
       if (settings::precursor_frequency_on) {
 	mesh_bin = simulation::frequency_mesh->get_bin(p.r());
+	n_bins = simulation::frequency_mesh->n_bins();
       }
 
       for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
         double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
 	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-          int shape_product = simulation::frequency_mesh->shape_[0] *
-		              simulation::frequency_mesh->shape_[1] *
-			      simulation::frequency_mesh->shape_[2];
 	  delayed_nu_fission = delayed_nu_fission
-		               * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+		               * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
 	}
 	nu_fission += delayed_nu_fission;
       }
