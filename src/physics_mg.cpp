@@ -252,46 +252,60 @@ absorption(Particle& p)
 
     int mesh_bin = -1;
     int n_bins;
-    double nu_fission = p.macro_xs_.prompt_nu_fission;
+  //  double nu_fission = p.macro_xs_.prompt_nu_fission;
     if (settings::precursor_frequency_on) {
       mesh_bin = simulation::frequency_mesh->get_bin(p.r());
       n_bins = simulation::frequency_mesh->n_bins();
-    }
-
-    for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
-      double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
-      if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-	delayed_nu_fission = delayed_nu_fission
-		             * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+      double nu_fission = p.macro_xs_.prompt_nu_fission;
+      for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
+	double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
+	if (mesh_bin != -1 && d<= settings::num_frequency_delayed_groups) {
+	  delayed_nu_fission = delayed_nu_fission * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	}
+	nu_fission += delayed_nu_fission;
       }
-      nu_fission += delayed_nu_fission;
+      p.keff_tally_absorption_ += p.wgt_absorb_ * nu_fission /
+	      p.macro_xs_.absorption;
+    } else {
+      p.keff_tally_absorption_ += p.wgt_absorb_ * p.macro_xs_.nu_fission /
+	      p.macro_xs_.absorption;
     }
 
-    // Score implicit absorption estimate of keff
-    p.keff_tally_absorption_ += p.wgt_absorb_ * nu_fission /
-        p.macro_xs_.absorption;
   } else {
     if (p.macro_xs_.absorption > prn(p.current_seed()) * p.macro_xs_.total) {
 
       int mesh_bin = -1;
       int n_bins;
-      double nu_fission = p.macro_xs_.prompt_nu_fission;
+    //  double nu_fission = p.macro_xs_.prompt_nu_fission;
       if (settings::precursor_frequency_on) {
 	mesh_bin = simulation::frequency_mesh->get_bin(p.r());
 	n_bins = simulation::frequency_mesh->n_bins();
-      }
-
-      for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
-        double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
-	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-	  delayed_nu_fission = delayed_nu_fission
-		               * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	double nu_fission = p.macro_xs_.prompt_nu_fission;
+        for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
+	  double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
+	  if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
+	    delayed_nu_fission = delayed_nu_fission * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	  }
+	  nu_fission += delayed_nu_fission;
 	}
-	nu_fission += delayed_nu_fission;
+	p.keff_tally_absorption_ += p.wgt_ * nu_fission /
+		p.macro_xs_.absorption;
+      } else {
+	p.keff_tally_absorption_ += p.wgt_ * p.macro_xs_.nu_fission /
+		p.macro_xs_.absorption;
       }
 
-      p.keff_tally_absorption_ += p.wgt_ * nu_fission /
-           p.macro_xs_.absorption;
+//      for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
+//        double delayed_nu_fission = p.macro_xs_.delayed_nu_fission[d-1];
+//	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
+//	  delayed_nu_fission = delayed_nu_fission
+//		               * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+//	}
+//	nu_fission += delayed_nu_fission;
+//      }
+
+ //     p.keff_tally_absorption_ += p.wgt_ * nu_fission /
+//           p.macro_xs_.absorption;
       p.alive_ = false;
       p.event_ = TallyEvent::ABSORB;
     }
