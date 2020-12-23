@@ -166,28 +166,29 @@ create_fission_sites(Particle& p, int i_nuclide, const Reaction& rx)
 {
   int mesh_bin = -1;
   int n_bins;
+  double nu_t = 0.0;
   const auto& nuc {data::nuclides[i_nuclide]};
   // If uniform fission source weighting is turned on, we increase or decrease
   // the expected number of fission sites produced
   double weight = settings::ufs_on ? ufs_get_weight(p) : 1.0;
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
-    i_nuclide].prompt_nu_fission / p.neutron_xs_[i_nuclide].total;
-
   if (settings::precursor_frequency_on) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
     n_bins = simulation::frequency_mesh->n_bins();
-  }
-
-  for (int d = 1; d <= nuc->n_precursor_; ++d) {
-    double nu_delayed = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
-      i_nuclide].delayed_nu_fission[d-1] / p.neutron_xs_[i_nuclide].total;
-    if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-      nu_delayed = nu_delayed
-	                   * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+    nu_t = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
+	    i_nuclide].prompt_nu_fission / p.neutron_xs_[i_nuclide].total;
+    for (int d = 1; d <= nuc->n_precursor_; ++d) {
+      double nu_delayed = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
+	      i_nuclide].delayed_nu_fission[d-1] / p.neutron_xs_[i_nuclide].total;
+      if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
+	nu_delayed = nu_delayed * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+      }
+      nu_t += nu_delayed;
     }
-    nu_t += nu_delayed; 
+  } else {
+      nu_t = p.wgt_ / simulation::keff * weight * p.neutron_xs_[
+	      i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].total;
   }
 
   // Sample the number of neutrons produced
@@ -668,21 +669,22 @@ void absorption(Particle& p, int i_nuclide)
     // Score implicit absorption estimate of keff
     if (settings::run_mode == RunMode::EIGENVALUE) {
       
-      double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
       if (settings::precursor_frequency_on) {
         mesh_bin = simulation::frequency_mesh->get_bin(p.r());
 	n_bins = simulation::frequency_mesh->n_bins();
-      }
-   
-      for (int d = 1; d <= nuc->n_precursor_; ++d) {
-        double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d-1];
-	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-	  delayed_nu_fission = delayed_nu_fission
-		               * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
+	for (int d = 1; d <= nuc->n_precursor_; ++d) {
+          double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d-1];
+	  if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
+	    delayed_nu_fission = delayed_nu_fission * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	  }
+	  nu_fission += delayed_nu_fission;
 	}
-	nu_fission += delayed_nu_fission;
+	p.keff_tally_absorption_ += p.wgt_absorb_ * nu_fission / p.neutron_xs_[i_nuclide].absorption;
+      } else {
+	p.keff_tally_absorption_ += p.wgt_absorb_ * p.neutron_xs_[
+		i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
       }
-      p.keff_tally_absorption_ += p.wgt_absorb_ * nu_fission / p.neutron_xs_[i_nuclide].absorption;
     }
   } else {
     // See if disappearance reaction happens
@@ -692,21 +694,22 @@ void absorption(Particle& p, int i_nuclide)
       // Score absorption estimate of keff
       if (settings::run_mode == RunMode::EIGENVALUE) {
 	
-	double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
 	if (settings::precursor_frequency_on) {
 	  mesh_bin = simulation::frequency_mesh->get_bin(p.r());
 	  n_bins = simulation::frequency_mesh->n_bins();
-	}
-
-	for (int d = 1; d <= nuc->n_precursor_; ++d) {
-          double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d-1];
-          if (mesh_bin !=-1 && d <= settings::num_frequency_delayed_groups && nuc->fissionable_) {
-	    delayed_nu_fission = delayed_nu_fission 
-		                * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	  double nu_fission = p.neutron_xs_[i_nuclide].prompt_nu_fission;
+	  for (int d = 1; d <= nuc->n_precursor_; ++d) {
+	    double delayed_nu_fission = p.neutron_xs_[i_nuclide].delayed_nu_fission[d-1];
+	    if (mesh_bin != -1 && d <= settings:: num_frequency_delayed_groups && nuc->fissionable_) {
+	      delayed_nu_fission = delayed_nu_fission * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	    }
+	    nu_fission += delayed_nu_fission;
 	  }
-	  nu_fission += delayed_nu_fission;
+	  p.keff_tally_absorption_ += p.wgt_ * nu_fission / p.neutron_xs_[i_nuclide].absorption;
+	} else {
+          p.keff_tally_absorption_ += p.wgt_ * p.neutron_xs_[
+		  i_nuclide].nu_fission / p.neutron_xs_[i_nuclide].absorption;
 	}
-	p.keff_tally_absorption_ += p.wgt_ * nu_fission / p.neutron_xs_[i_nuclide].absorption;
       }
 
       p.alive_ = false;
@@ -1109,6 +1112,7 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
   // an angular distribution listed, but for those that do, it's simply just
   // a uniform distribution in mu
   double mu = 2.0 * prn(seed) - 1.0;
+  double nu_d;
 
   // Sample azimuthal angle uniformly in [0,2*pi)
   double phi = 2.0*PI*prn(seed);
@@ -1119,13 +1123,13 @@ void sample_fission_neutron(int i_nuclide, const Reaction& rx, double E_in, Part
   if (settings::precursor_frequency_on) {
     mesh_bin = simulation::frequency_mesh->get_bin(site->r);
     n_bins = simulation::frequency_mesh->n_bins();
-  }
-  double nu_d = 0.0;
-  if (mesh_bin != -1 && nuc->fissionable_) {
-    for (int d = 1; d <= nuc->n_precursor_; ++d) {
-      if (d <= settings::num_frequency_delayed_groups) {
-        nu_d += nuc->nu(E_in, Nuclide::EmissionMode::delayed, d)
-		* settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+    nu_d = 0.0;
+    if (mesh_bin != -1 && nuc->fissionable_) {
+      for (int d = 1; d <= nuc->n_precursor_; ++d) {
+	if (d <= settings::num_frequency_delayed_groups) {
+	  nu_d += nuc->nu(E_in, Nuclide::EmissionMode::delayed, d)
+		  * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	}
       }
     }
   } else {
