@@ -396,7 +396,7 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
           * xs_[t](i, XS_FISSION);
 	xs_[t](i, XS_PROMPT_NU_FISSION) = nu(E, EmissionMode::prompt)
           * xs_[t](i, XS_FISSION);
-	for (int d = 0; d <= n_precursor_; ++d) {
+	for (int d = 0; d < n_precursor_; ++d) {
 	  xs_[t](i, XS_DELAYED_NU_FISSION + d) = nu(E, EmissionMode::delayed, d+1)
 	    * xs_[t](i, XS_FISSION);
 	}
