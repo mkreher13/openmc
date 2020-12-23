@@ -753,7 +753,6 @@ void Material::calculate_xs(Particle& p) const
   p.macro_xs_.fission = 0.0;
   p.macro_xs_.nu_fission = 0.0;
   p.macro_xs_.prompt_nu_fission = 0.0;
-//  p.macro_xs_.delayed_nu_fission.fill(0.0);
   std::fill (p.macro_xs_.delayed_nu_fission.begin(),p.macro_xs_.delayed_nu_fission.end(),0.0);
   p.macro_xs_.inverse_velocity = 0.0;
 
