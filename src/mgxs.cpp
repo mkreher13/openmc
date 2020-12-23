@@ -557,7 +557,6 @@ Mgxs::sample_fission_energy(int gin, std::vector<double> delayed_nu_fission, int
   int tid = 0;
 #endif
   XsData* xs_t = &xs[cache[tid].t];
-  double nu_fission = xs_t->nu_fission(cache[tid].a,gin);
 
   // Find the probability of having a prompt neutron
   double prob_prompt = xs_t->prompt_nu_fission(cache[tid].a, gin);
@@ -570,6 +569,7 @@ Mgxs::sample_fission_energy(int gin, std::vector<double> delayed_nu_fission, int
     double prompt_nu_fission = xs_t->prompt_nu_fission(cache[tid].a, gin);
     xi_pd = prn(seed) * (prompt_nu_fission + delayed_nu_fission_total);
   } else {
+    double nu_fission = xs_t->nu_fission(cache[tid].a,gin);
     xi_pd = prn(seed) * nu_fission;
   }
   double xi_gout = prn(seed);
