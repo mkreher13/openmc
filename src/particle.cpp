@@ -211,6 +211,7 @@ Particle::event_advance()
 
   // Adjust the weight to account for the flux frequency
   int mesh_bin = -1;
+  int n_bins;
   if (settings::flux_frequency_on) {
     
     if (E_ <= settings::frequency_energy_bins[0] || 
@@ -259,24 +260,21 @@ Particle::event_advance()
   if (settings::run_mode == RunMode::EIGENVALUE &&
       type_ == Particle::Type::neutron) {
       
-    double nu_fission = macro_xs_.prompt_nu_fission;
     if (settings::precursor_frequency_on) {
       mesh_bin = simulation::frequency_mesh->get_bin(r());
-    }
-
-    for (int d = 1; d <= macro_xs_.delayed_nu_fission.size(); ++d) {
-      double delayed_nu_fission = macro_xs_.delayed_nu_fission[d-1];
-      if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-        int shape_product = simulation::frequency_mesh->shape_[0] *
-		            simulation::frequency_mesh->shape_[1] *
-			    simulation::frequency_mesh->shape_[2];
-	delayed_nu_fission = delayed_nu_fission
-		             * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+      n_bins = simulation::frequency_mesh->n_bins();
+      double nu_fission = macro_xs_.prompt_nu_fission;
+      for (int d = 1; d <= macro_xs_.delayed_nu_fission.size(); ++d) {
+	double delayed_nu_fission = macro_xs_.delayed_nu_fission[d-1];
+	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
+	  delayed_nu_fission = delayed_nu_fission * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	}
+	nu_fission += delayed_nu_fission;
       }
-      nu_fission += delayed_nu_fission;
+      keff_tally_tracklength_ += wgt_ * distance * nu_fission;
+    } else {
+      keff_tally_tracklength_ += wgt_ * distance * macro_xs_.nu_fission;
     }
-
-    keff_tally_tracklength_ += wgt_ * distance * nu_fission;
   }
 
   // Score flux derivative accumulators for differential tallies.
@@ -323,25 +321,22 @@ Particle::event_collide()
       type_ == Particle::Type::neutron) {
     
     int mesh_bin = -1;
-    double nu_fission = macro_xs_.prompt_nu_fission;
+    int n_bins;
     if (settings::precursor_frequency_on) {
       mesh_bin = simulation::frequency_mesh->get_bin(r());
-    }
-
-    for (int d = 1; d <= macro_xs_.delayed_nu_fission.size(); ++d) {
-      double delayed_nu_fission = macro_xs_.delayed_nu_fission[d-1];
-      if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-	int shape_product = simulation::frequency_mesh->shape_[0] *
-		            simulation::frequency_mesh->shape_[1] *
-			    simulation::frequency_mesh->shape_[2];
-	delayed_nu_fission = delayed_nu_fission
-		             * settings::precursor_frequency[mesh_bin+shape_product*(d-1)];
+      n_bins = simulation::frequency_mesh->n_bins();
+      double nu_fission = macro_xs_.prompt_nu_fission;
+      for (int d = 1; d <= macro_xs_.delayed_nu_fission.size(); ++d) {
+	double delayed_nu_fission = macro_xs_.delayed_nu_fission[d-1];
+	if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
+	  delayed_nu_fission = delayed_nu_fission * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	}
+	nu_fission += delayed_nu_fission;
       }
-      nu_fission += delayed_nu_fission;
+      keff_tally_collision_ += wgt_ * nu_fission / (macro_xs_.total + abs(freq_));
+    } else {
+      keff_tally_collision_ += wgt_ * macro_xs_.nu_fission / macro_xs_.total;
     }
-
-    keff_tally_collision_ += wgt_ * nu_fission
-      / (macro_xs_.total + abs(freq_));
   }
 
   // Score surface current tallies -- this has to be done before the collision
