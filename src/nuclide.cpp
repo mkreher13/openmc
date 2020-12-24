@@ -699,17 +699,27 @@ void Nuclide::calculate_xs(int i_sab, int i_log_union, double sab_frac, Particle
       // Calculate microscopic nuclide nu-fission cross section
       micro.nu_fission = (1.0 - f)*xs(i_grid, XS_NU_FISSION)
         + f*xs(i_grid + 1, XS_NU_FISSION);
-      micro.prompt_nu_fission = (1.0 - f)*xs(i_grid, XS_PROMPT_NU_FISSION)
-        + f*xs(i_grid + 1, XS_PROMPT_NU_FISSION);
-      for (int d = 0; d < n_precursor_; ++d) {
-        micro.delayed_nu_fission[d] = (1.0 - f)*xs(i_grid, XS_DELAYED_NU_FISSION + d)
-	  + f*xs(i_grid + 1, XS_DELAYED_NU_FISSION + d);
-      }
     } else {
       micro.fission = 0.0;
       micro.nu_fission = 0.0;
-      micro.prompt_nu_fission = 0.0;
-      micro.delayed_nu_fission.fill(0.0);
+    }
+
+    if (settings::frequency_method_on) {
+      if (fissionable_) {
+        micro.prompt_nu_fission = (1.0 - f)*(xs(i_grid, XS_FISSION) *
+	  	nu(grid.energy[i_grid], EmissionMode::prompt))
+		+ f*(xs(i_grid + 1, XS_FISSION) * 
+		nu(grid.energy[i_grid + 1], EmissionMode::prompt));
+        for (int d = 0; d < n_precursor_; ++d) {
+	  micro.delayed_nu_fission[d] = (1.0 - f)*(xs(i_grid, XS_FISSION) * 
+		nu(grid.energy[i_grid], EmissionMode::delayed, d+1))
+		+ f*(xs(i_grid + 1, XS_FISSION) *
+		nu(grid.energy[i_grid + 1], EmissionMode::delayed, d+1));
+        }
+      } else {
+	micro.prompt_nu_fission = 0.0;
+	micro.delayed_nu_fission.fill(0.0);
+      }
     }
 
     // Calculate microscopic nuclide photon production cross section
