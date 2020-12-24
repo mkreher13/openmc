@@ -108,31 +108,33 @@ create_fission_sites(Particle& p)
 
   int mesh_bin = -1;
   int n_bins;
+  double nu_t;
   std::vector<double> delayed_nu_fission(p.macro_xs_.delayed_nu_fission.size());
 
   // Determine the expected number of neutrons produced
-  double nu_t = p.wgt_ / simulation::keff * weight *
-       p.macro_xs_.prompt_nu_fission / (p.macro_xs_.total + abs(p.freq_));
-
-  if (settings::precursor_frequency_on) {
+  if (settings::frequency_method_on) {
     mesh_bin = simulation::frequency_mesh->get_bin(p.r());
     n_bins = simulation::frequency_mesh->n_bins();
-  }
-
-  for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
-    delayed_nu_fission[d-1] = p.macro_xs_.delayed_nu_fission[d-1];
-    double nu_delayed = p.wgt_ / simulation::keff * weight * delayed_nu_fission[d-1] /
-	                (p.macro_xs_.total + abs(p.freq_));
-
-    if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups) {
-      nu_delayed = nu_delayed 
-	      	   * settings::precursor_frequency[mesh_bin+n_bins*(d-1)]; 
-      delayed_nu_fission[d-1] = delayed_nu_fission[d-1] 
-	                   * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+    nu_t = p.wgt_ / simulation::keff * weight * 
+	 p.macro_xs_.prompt_nu_fission / (p.macro_xs_.total + abs(p.freq_));
+    for (int d = 1; d <= p.macro_xs_.delayed_nu_fission.size(); ++d) {
+      delayed_nu_fission[d-1] = p.macro_xs_.delayed_nu_fission[d-1];
+      double nu_delayed = p.wgt_ / simulation::keff * weight * delayed_nu_fission[d-1] /
+	      (p.macro_xs_.total + abs(p.freq_));
+      if (mesh_bin != -1 && d <= settings::num_frequency_delayed_groups 
+		      && settings::precursor_frequency_on) {
+	nu_delayed = nu_delayed * settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+	delayed_nu_fission[d-1] = delayed_nu_fission[d-1]
+		* settings::precursor_frequency[mesh_bin+n_bins*(d-1)];
+      }
+      nu_t += nu_delayed;
     }
-    nu_t += nu_delayed;
+  } else {
+    nu_t = p.wgt_ / simulation::keff * weight *
+	    p.macro_xs_.nu_fission / p.macro_xs_.total;
+    std::fill (delayed_nu_fission.begin(), delayed_nu_fission.end(), 0.0);
   }
-  
+
   // Sample the number of neutrons produced
   int nu = static_cast<int>(nu_t);
   if (prn(p.current_seed()) <= (nu_t - int(nu_t))) {
@@ -252,7 +254,6 @@ absorption(Particle& p)
 
     int mesh_bin = -1;
     int n_bins;
-  //  double nu_fission = p.macro_xs_.prompt_nu_fission;
     if (settings::precursor_frequency_on) {
       mesh_bin = simulation::frequency_mesh->get_bin(p.r());
       n_bins = simulation::frequency_mesh->n_bins();
@@ -276,7 +277,6 @@ absorption(Particle& p)
 
       int mesh_bin = -1;
       int n_bins;
-    //  double nu_fission = p.macro_xs_.prompt_nu_fission;
       if (settings::precursor_frequency_on) {
 	mesh_bin = simulation::frequency_mesh->get_bin(p.r());
 	n_bins = simulation::frequency_mesh->n_bins();

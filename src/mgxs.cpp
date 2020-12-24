@@ -593,7 +593,11 @@ Mgxs::sample_fission_energy(int gin, std::vector<double> delayed_nu_fission, int
 
     // get the delayed group
     for (dg = 0; dg < num_delayed_groups; ++dg) {
-      prob_prompt += delayed_nu_fission[dg];
+      if (settings::frequency_method_on) {
+	prob_prompt += delayed_nu_fission[dg];
+      } else {
+	prob_prompt += xs_t->delayed_nu_fission(cache[tid].a, dg, gin);
+      }
       if (xi_pd < prob_prompt) break;
     }
 
