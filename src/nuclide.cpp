@@ -47,8 +47,8 @@ int Nuclide::XS_ABSORPTION {1};
 int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
-int Nuclide::XS_PROMPT_NU_FISSION {5};
-int Nuclide::XS_DELAYED_NU_FISSION {6};
+//int Nuclide::XS_PROMPT_NU_FISSION {5};
+//int Nuclide::XS_DELAYED_NU_FISSION {6};
 
 Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
@@ -309,7 +309,7 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
     // since n_precursors_ is not known until later in the code.
     // If your data uses more than 8 neutron precursor groups, 
     // this will be a problem. 
-    std::array<size_t, 2> shape {grid.energy.size(), 14};
+    std::array<size_t, 2> shape {grid.energy.size(), 5};
     xs_.emplace_back(shape, 0.0);
   }
 
@@ -394,12 +394,6 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
         double E = grid_[t].energy[i];
         xs_[t](i, XS_NU_FISSION) = nu(E, EmissionMode::total)
           * xs_[t](i, XS_FISSION);
-	xs_[t](i, XS_PROMPT_NU_FISSION) = nu(E, EmissionMode::prompt)
-          * xs_[t](i, XS_FISSION);
-	for (int d = 0; d < n_precursor_; ++d) {
-	  xs_[t](i, XS_DELAYED_NU_FISSION + d) = nu(E, EmissionMode::delayed, d+1)
-	    * xs_[t](i, XS_FISSION);
-	}
       }
     }
   }
