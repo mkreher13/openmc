@@ -47,8 +47,6 @@ int Nuclide::XS_ABSORPTION {1};
 int Nuclide::XS_FISSION {2};
 int Nuclide::XS_NU_FISSION {3};
 int Nuclide::XS_PHOTON_PROD {4};
-//int Nuclide::XS_PROMPT_NU_FISSION {5};
-//int Nuclide::XS_DELAYED_NU_FISSION {6};
 
 Nuclide::Nuclide(hid_t group, const std::vector<double>& temperature)
 {
@@ -305,10 +303,6 @@ void Nuclide::create_derived(const Function1D* prompt_photons, const Function1D*
 {
   for (const auto& grid : grid_) {
     // Allocate and initialize cross section
-    // Warning: 8 instances of XS_DELAYED_NU_FISSION were added here
-    // since n_precursors_ is not known until later in the code.
-    // If your data uses more than 8 neutron precursor groups, 
-    // this will be a problem. 
     std::array<size_t, 2> shape {grid.energy.size(), 5};
     xs_.emplace_back(shape, 0.0);
   }

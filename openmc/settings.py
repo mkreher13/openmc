@@ -1302,19 +1302,12 @@ class Settings:
     def _frequency_from_xml_element(self, root):
         elem = root.find('frequency')
         if elem is not None:
-            self.frequency_mesh = RegularMesh()
-            value = get_text(elem, 'lower_left')
-            if value is not None:
-                self.frequency_mesh.lower_left = [float(x) for x in value.split()]
-            value = get_text(elem, 'upper_right')
-            if value is not None:
-                self.frequency_mesh.upper_right = [float(x) for x in value.split()]
-            value = get_text(elem, 'width')
-            if value is not None:
-                self.frequency_mesh.width = [float(x) for x in value.split()]
-            value = get_text(elem, 'dimension')
-            if value is not None:
-                self.frequency_mesh.dimension = [int(x) for x in value.split()]
+            text = get_text(root, 'frequency_mesh')
+            if text is not None:
+                path = "./mesh[@id='{}']".format(int(text))
+                value = root.find(path)
+                if value is not None:
+                    self.frequency_mesh = RegularMesh.from_xml_element(value)
             value = get_text(elem, 'group_structure')
             if value is not None:
                 group_edges = [float(x) for x in value.split()]
