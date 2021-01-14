@@ -334,24 +334,44 @@ class Solver(object):
 
     @amplitude_mesh.setter
     def amplitude_mesh(self, mesh):
-        self._amplitude_mesh = mesh
+
+        self._amplitude_mesh = openmc.RegularMesh()
+        self._amplitude_mesh.type = mesh.type
+        self._amplitude_mesh.dimension = mesh.dimension
+        self._amplitude_mesh.lower_left = mesh.lower_left
 
         unity_mesh = openmc.RegularMesh()
         unity_mesh.type = mesh.type
         unity_mesh.dimension = [1,1,1]
         unity_mesh.lower_left  = mesh.lower_left
         if mesh.width is not None:
+            self._amplitude_mesh.width = mesh.width
             unity_mesh.width = [i*j for i,j in zip(mesh.dimension, mesh.width)]
         else:
+            self._amplitude_mesh.width = [i-j for i,j in zip(mesh.upper_right, mesh.lower_left)]
             unity_mesh.width = [i-j for i,j in zip(mesh.upper_right, mesh.lower_left)]
         self._unity_mesh = unity_mesh
 
         # Set the power mesh to the shape mesh if it has not be set
         if self.shape_mesh is None:
-            self.shape_mesh = mesh
+            if mesh.width is not None:
+                self.shape_mesh = mesh
+            else:
+                self.shape_mesh = openmc.RegularMesh()
+                self.shape_mesh.type = mesh.type
+                self.shape_mesh.dimension = mesh.dimension
+                self.shape_mesh.lower_left = mesh.lower_left
+                self.shape_mesh.width = [i-j for i,j in zip(mesh.upper_right, mesh.lower_left)]
 
         if self.tally_mesh is None:
-            self.tally_mesh = mesh
+            if mesh.width is not None:
+                self.tally_mesh = mesh
+            else:
+                self.tally_mesh = openmc.RegularMesh()
+                self.tally_mesh.type = mesh.type
+                self.tally_mesh.dimension = mesh.dimension
+                self.tally_mesh.lower_left = mesh.lower_left
+                self.tally_mesh.width = mesh.width
 
     @shape_mesh.setter
     def shape_mesh(self, mesh):
@@ -865,7 +885,10 @@ class Solver(object):
         frequency_mesh_ = openmc.RegularMesh()
         frequency_mesh_.dimension = self.shape_mesh.dimension
         frequency_mesh_.lower_left = self.shape_mesh.lower_left
-        frequency_mesh_.width = self.shape_mesh.width
+        if self.shape_mesh.width is not None:
+            frequency_mesh_.width = self.shape_mesh.width
+        else:
+            frequency_mesh_.upper_right = self.shape_mesh.upper_right
 
         self.settings_file.frequency_mesh = frequency_mesh_
         self.settings_file.frequency_group_structure = self.energy_groups
